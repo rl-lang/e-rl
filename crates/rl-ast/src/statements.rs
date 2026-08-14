@@ -15,7 +15,10 @@
 //! bindings at the type level via separate variants (`Int` vs `CInt`, etc.).
 //!
 //! [`Resolver`]: crate::resolver
-use std::rc::Rc;
+use alloc::boxed::Box;
+use alloc::rc::Rc;
+use alloc::string::String;
+use alloc::vec::Vec;
 
 use crate::ExprId;
 use rl_utils::span::Span;

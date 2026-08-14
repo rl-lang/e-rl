@@ -11,6 +11,9 @@
 //! environment lookup, eliminating runtime name searches.
 //!
 //! [`Resolver`]: crate::resolver
+use alloc::string::String;
+use alloc::vec::Vec;
+
 use crate::ExprId;
 use crate::statements::{Param, Statement, TypeAnnotation};
 use rl_lexer::tokentypes;

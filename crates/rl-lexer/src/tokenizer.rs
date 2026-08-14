@@ -3,6 +3,9 @@
 //! Holds the source text, the current byte cursor, and the accumulated token
 //! list. The scan loop in here dispatches each character to the appropriate
 //! sub-scanner in `types/` or handles single/double-character operators inline.
+use alloc::string::String;
+use alloc::vec::Vec;
+
 use crate::tokentypes::{Token, TokenType, Trivia};
 use rl_utils::errors::Error;
 use rl_utils::source::SourceFile;
@@ -51,13 +54,7 @@ impl Tokenizer {
     ///     rl_utils::source::SourceFile,
     /// };
     ///
-    /// let tokens = match Tokenizer::lex(SourceFile::new("source", "1 == 1".to_string())) {
-    ///     Ok(tokens) => tokens,
-    ///     Err(error) => {
-    ///         error.report_to_stderr();
-    ///         std::process::exit(1);
-    ///     },
-    /// };
+    /// let tokens = Tokenizer::lex(SourceFile::new("source", "1 == 1".to_string())).unwrap();
     ///
     /// assert_eq!(tokens[0].token, TokenType::NumberLiteral(1));
     /// assert_eq!(tokens[1].token, TokenType::Compare);
@@ -91,8 +88,6 @@ impl Tokenizer {
             Span::new(eof_char_index, eof_char_index),
         ));
 
-        #[cfg(feature = "debug")]
-        log::debug!("Recognized {} token(s)", lexer.tokens.len());
         Ok(lexer.tokens)
     }
 

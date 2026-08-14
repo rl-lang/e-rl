@@ -1,4 +1,4 @@
-use std::ops::Range;
+use core::ops::Range;
 
 /// A byte-offset range into the source string.
 ///
@@ -45,8 +45,9 @@ impl From<Range<usize>> for Span {
 
 #[cfg(test)]
 mod tests {
+use alloc::vec;
     use super::Span;
-    use std::ops::Range;
+    use core::ops::Range;
 
     const DEFAULT_START: usize = 0;
     const DEFAULT_END: usize = 10;

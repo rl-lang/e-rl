@@ -6,9 +6,10 @@
 //! panics immediately at the access site instead of silently reading
 //! unrelated data or panicking later with a confusing out-of-bounds error.
 
-use std::fmt;
-use std::marker::PhantomData;
-use std::sync::atomic::{AtomicU32, Ordering};
+use alloc::vec::Vec;
+use core::fmt;
+use core::marker::PhantomData;
+use core::sync::atomic::{AtomicU32, Ordering};
 
 /// Global counter handing out a unique id to every `Arena<T>` that's ever
 /// constructed, so `Id<T>`s can be checked against their origin arena.
@@ -71,8 +72,8 @@ impl<T> PartialEq for Id<T> {
     }
 }
 impl<T> Eq for Id<T> {}
-impl<T> std::hash::Hash for Id<T> {
-    fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
+impl<T> core::hash::Hash for Id<T> {
+    fn hash<H: core::hash::Hasher>(&self, state: &mut H) {
         self.index.hash(state);
         self.arena_id.hash(state);
     }
@@ -123,7 +124,7 @@ impl<T> Arena<T> {
         if index >= self.items.len() {
             panic!(
                 "Arena<{}>: index {} out of bounds (len {})",
-                std::any::type_name::<T>(),
+                core::any::type_name::<T>(),
                 index,
                 self.items.len()
             );
@@ -138,7 +139,7 @@ impl<T> Arena<T> {
         if index >= len {
             panic!(
                 "Arena<{}>: index {} out of bounds (len {})",
-                std::any::type_name::<T>(),
+                core::any::type_name::<T>(),
                 index,
                 len
             );
@@ -163,7 +164,7 @@ impl<T> Arena<T> {
         if id.arena_id != self.id {
             panic!(
                 "Arena<{}>::{}: Id belongs to arena {} but this arena is {} - cross-arena access",
-                std::any::type_name::<T>(),
+                core::any::type_name::<T>(),
                 op,
                 id.arena_id,
                 self.id
@@ -185,14 +186,14 @@ impl<T> Default for Arena<T> {
     }
 }
 
-impl<T> std::ops::Index<Id<T>> for Arena<T> {
+impl<T> core::ops::Index<Id<T>> for Arena<T> {
     type Output = T;
     fn index(&self, id: Id<T>) -> &T {
         self.get(id)
     }
 }
 
-impl<T> std::ops::IndexMut<Id<T>> for Arena<T> {
+impl<T> core::ops::IndexMut<Id<T>> for Arena<T> {
     fn index_mut(&mut self, id: Id<T>) -> &mut T {
         self.get_mut(id)
     }

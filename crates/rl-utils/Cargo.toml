@@ -4,12 +4,6 @@ version.workspace = true
 readme = "readme.md"
 edition.workspace = true
 license.workspace = true
-description = "Shared utility functions used across the rl-lang toolchain"
-repository.workspace = true
+description = "Shared utility functions used across the embedded RL engine"
 
 [dependencies]
-ariadne.workspace = true
-log = { workspace = true, optional = true }
-
-[features]
-debug = ["dep:log"]

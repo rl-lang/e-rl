@@ -1,6 +1,8 @@
-use std::sync::Arc;
-
-use ariadne::{Color, Label, Report, ReportKind, Source};
+use alloc::boxed::Box;
+use alloc::rc::Rc;
+use alloc::string::String;
+use alloc::string::ToString;
+use alloc::vec::Vec;
 
 use crate::source::SourceFile;
 use crate::span::Span;
@@ -8,15 +10,13 @@ use crate::span::Span;
 /// heavy optional fields, heap-allocated so `Error` stays small on the stack
 #[derive(Debug, Clone)]
 struct ErrorDetail {
-    /// primary span (anchor of the ariadne report) and its label text
+    /// primary span (anchor of the diagnostic) and its label text
     primary: (Span, String),
     /// secondary spans with labels
     labels: Vec<(Span, String)>,
-    /// source string for rendering; supplied by the subsystem that built the error
-    source: Option<Arc<String>>,
-    /// source file name shown in the report header
+    /// source file name shown in the header
     source_name: Option<String>,
-    /// optional help/hint line shown after the snippet (e.g. "did you mean foo?")
+    /// optional help/hint line shown after the message (e.g. "did you mean foo?")
     help: Option<String>,
 }
 
@@ -32,11 +32,8 @@ pub struct Error {
     /// boxed span-aware detail; `None` for legacy errors that have no span
     detail: Option<Box<ErrorDetail>>,
     /// file name + 1-indexed (line, col), set from a [`crate::line_index::LineIndex`]
-    /// when no source text is available to render an ariadne snippet (e.g.
-    /// errors raised while running compiled `.rlc` bytecode, which embeds a
-    /// `LineIndex` but not the original source). Used by [`Error::fallback_text`]
-    /// to print a `file:line:col` diagnostic instead of a bare message.
-    location: Option<(Arc<str>, usize, usize)>,
+    /// when no source text is available to render a source snippet.
+    location: Option<(Rc<str>, usize, usize)>,
 }
 
 /// provides an error category with optional error context
@@ -69,11 +66,9 @@ pub enum Reason {
 
 impl Error {
     /// builder-style constructor for span-aware errors.
-    /// the `span` becomes the primary anchor of the report.
+    /// the `span` becomes the primary anchor of the diagnostic.
     pub fn at(kind: Reason, message: impl Into<String>, span: Span) -> Self {
         let message = message.into();
-        #[cfg(feature = "debug")]
-        log::debug!("Error: {}", message);
         Self {
             message: message.clone(),
             line: None,
@@ -81,7 +76,6 @@ impl Error {
             detail: Some(Box::new(ErrorDetail {
                 primary: (span, message),
                 labels: Vec::new(),
-                source: None,
                 source_name: None,
                 help: None,
             })),
@@ -91,15 +85,11 @@ impl Error {
 
     /// Attaches a `file:line:col` fallback location, resolved from a
     /// [`crate::line_index::LineIndex`] against this error's primary span.
-    /// Used when no source text is available to render a full ariadne
-    /// snippet (see [`Error::fallback_text`]); a no-op when full source
-    /// is later attached via [`Error::with_source`] /
-    /// [`Error::with_source_file`], since [`Error::report_to_stderr`]
-    /// prefers the ariadne path whenever source is present.
+    /// Used when no source text is available to render a full snippet.
     pub fn with_location_from(mut self, index: &crate::line_index::LineIndex) -> Self {
         if let Some(span) = self.span() {
             let (line, col) = index.line_col(span.start);
-            self.location = Some((Arc::clone(index.source_name()), line, col));
+            self.location = Some((Rc::clone(index.source_name()), line, col));
         }
         self
     }
@@ -112,7 +102,7 @@ impl Error {
         self
     }
 
-    /// (Re-)anchors the primary span of this report at `span`. Unlike
+    /// (Re-)anchors the primary span of this diagnostic at `span`. Unlike
     /// [`Error::at`], this works on an error that was built without span
     /// context (e.g. deep inside generic conversion code with no access to
     /// the call site) - the caller sets the real location once it's known.
@@ -123,7 +113,6 @@ impl Error {
                 self.detail = Some(Box::new(ErrorDetail {
                     primary: (span, self.message.clone()),
                     labels: Vec::new(),
-                    source: None,
                     source_name: None,
                     help: None,
                 }));
@@ -132,18 +121,10 @@ impl Error {
         self
     }
 
-    /// add a secondary label to the report.
+    /// add a secondary label to the diagnostic.
     pub fn with_label(mut self, span: Span, label: impl Into<String>) -> Self {
         if let Some(d) = &mut self.detail {
             d.labels.push((span, label.into()));
-        }
-        self
-    }
-
-    /// attach the source string so ariadne can render snippets.
-    pub fn with_source(mut self, source: Arc<String>) -> Self {
-        if let Some(d) = &mut self.detail {
-            d.source = Some(source);
         }
         self
     }
@@ -156,7 +137,7 @@ impl Error {
         self
     }
 
-    /// attach a help/hint line shown beneath the snippet (e.g. "did you mean foo?").
+    /// attach a help/hint line shown beneath the message (e.g. "did you mean foo?").
     pub fn with_help(mut self, help: impl Into<String>) -> Self {
         if let Some(d) = &mut self.detail {
             d.help = Some(help.into());
@@ -164,98 +145,87 @@ impl Error {
         self
     }
 
-    /// attach both the source text and name from a [`SourceFile`].
+    /// attach the file name from a [`SourceFile`] and resolve its primary
+    /// span to a `file:line:col` location.
     pub fn with_source_file(mut self, file: &SourceFile) -> Self {
         if let Some(d) = &mut self.detail {
-            d.source = Some(Arc::clone(&file.text));
             d.source_name = Some(file.name.to_string());
         }
-        self
-    }
-
-    /// prints the error and exits via panic so existing call sites and the REPL keep working.
-    ///
-    /// uses ariadne when `source` and a primary span are available; falls back to the legacy
-    /// text format otherwise.
-    pub fn print_error(&self) {
-        self.report_to_stderr();
-        panic!("rl error");
-    }
-
-    /// renders the error to stderr without terminating. used by call sites that already
-    /// own their control flow (e.g. anything returning `Result`).
-    pub fn report_to_stderr(&self) {
-        if let Some(d) = &self.detail
-            && let Some(src) = &d.source
-        {
-            let name: &str = d.source_name.as_deref().unwrap_or("<source>");
-            let (sp, primary_label) = &d.primary;
-            let mut builder = Report::build(ReportKind::Error, (name, sp.start..sp.end))
-                .with_message(&self.message)
-                .with_label(
-                    Label::new((name, sp.start..sp.end))
-                        .with_message(primary_label)
-                        .with_color(Color::Red),
-                );
-            for (lsp, label) in &d.labels {
-                builder = builder.with_label(
-                    Label::new((name, lsp.start..lsp.end))
-                        .with_message(label)
-                        .with_color(Color::Yellow),
-                );
-            }
-            if let Some(help) = &d.help {
-                builder = builder.with_help(help);
-            }
-            let _ = builder.finish().eprint((name, Source::from(src.as_str())));
-            return;
+        if let Some(span) = self.span() {
+            let index = crate::line_index::LineIndex::new(file.name.clone(), file.text.as_str());
+            let (line, col) = index.line_col(span.start);
+            self.location = Some((Rc::clone(index.source_name()), line, col));
         }
-
-        self.fallback_text();
-    }
-
-    /// text rendering used when no source is available to render an
-    /// ariadne snippet. Prefers a precise `file:line:col` location
-    /// (set via [`Error::with_location_from`]) over the legacy bare
-    /// `[N) Error: ...]` / `[Error: ...]` format, which is now only a
-    /// fallback for errors that have neither source nor a line index.
-    fn fallback_text(&self) {
+        self
+    }    /// Renders the plain-text diagnostic into `out`. The host decides where
+    /// the text goes (UART, framebuffer, kernel log buffer).
+    pub fn write(&self, out: &mut impl core::fmt::Write) -> core::fmt::Result {
         match (&self.location, &self.line) {
             (Some((name, line, col)), _) => {
-                println!("{}:{}:{}: [Error: {}]", name, line, col, self.message)
+                write!(out, "{}:{}:{}: [Error: {}]", name, line, col, self.message)?
             }
-            (None, Some(l)) => println!("[{}) Error: {}]", l, self.message),
-            (None, None) => println!("[Error: {}]", self.message),
+            (None, Some(l)) => write!(out, "[{}) Error: {}]", l, self.message)?,
+            (None, None) => write!(out, "[Error: {}]", self.message)?,
+        }
+
+        if let Some(d) = &self.detail {
+            let (_, primary_label) = &d.primary;
+            if primary_label != &self.message {
+                write!(out, "\n  {}", primary_label)?;
+            }
+            for (_, label) in &d.labels {
+                write!(out, "\n  {}", label)?;
+            }
+            if let Some(help) = &d.help {
+                write!(out, "\n  help: {}", help)?;
+            }
         }
 
         if let Some(r) = &self.reason {
             match &r.data {
                 Some(d) => {
-                    println!("[{}]", r.get_type_string());
+                    write!(out, "\n[{}]", r.get_type_string())?;
                     for l in d {
-                        println!("{}", l);
+                        write!(out, "\n{}", l)?;
                     }
                 }
-                _ => println!("[{}]", r.get_type_string()),
+                _ => write!(out, "\n[{}]", r.get_type_string())?,
             }
         }
+        Ok(())
+    }
+
+    /// Renders the plain-text diagnostic into a new [`String`].
+    pub fn rendered(&self) -> String {
+        let mut buf = String::new();
+        let _ = self.write(&mut buf);
+        buf
     }
 
     /// Extracts the primary [`Span`] of this error, if one was set.
     pub fn span(&self) -> Option<crate::span::Span> {
         self.detail.as_ref().map(|d| d.primary.0)
     }
+
+    /// Returns the raw error message string.
+    pub fn message(&self) -> &str {
+        &self.message
+    }
+
+    /// Returns the `file:line:col` location, if one was attached.
+    pub fn location(&self) -> Option<(&Rc<str>, usize, usize)> {
+        self.location.as_ref().map(|(n, l, c)| (n, *l, *c))
+    }
+}
+
+impl core::fmt::Display for Error {
+    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
+        self.write(f)
+    }
 }
 
 impl ErrorReason {
     /// creates a new [`ErrorReason`] with category type and optional data
-    ///
-    /// # Example
-    ///
-    /// ```rust
-    /// use rl_utils::errors::{ErrorReason, Reason};
-    /// ErrorReason::init(Reason::Lexer, Some(vec!["unknown token `$`".to_string()]));
-    /// ```
     pub fn init(error_type: Reason, data: Option<Vec<String>>) -> Self {
         Self { error_type, data }
     }
@@ -275,15 +245,11 @@ impl ErrorReason {
     }
 }
 
-impl Error {
-    /// Returns the raw error message string.
-    pub fn message(&self) -> &str {
-        &self.message
-    }
-}
-
 #[cfg(test)]
 mod tests {
+    use alloc::string::ToString;
+    use alloc::vec;
+
     use crate::{
         errors::{ErrorReason, Reason},
         source::SourceFile,
@@ -321,9 +287,9 @@ mod tests {
         let span = Span::new(0, 5);
         let source_file = SourceFile::new("main.rl", "print(\"foobar\")".to_string());
 
-        let err = Error::at(Reason::Lexer, "bad token", span).with_source_file(&source_file);
+        let error = Error::at(Reason::Lexer, "bad token", span).with_source_file(&source_file);
 
-        assert_eq!(err.span(), Some(span));
+        assert_eq!(error.span(), Some(span));
     }
 
     #[test]
@@ -343,5 +309,15 @@ mod tests {
             Some(vec!["stack overflow".to_string()]),
         );
         assert_eq!(reason.get_type_string(), "Interpreter Error");
+    }
+
+    #[test]
+    fn test_error_rendered() {
+        let error = Error::at(Reason::Parse, "unexpected token", Span::new(0, 3))
+            .with_source_name("main.rl")
+            .with_help("did you mean `println(...)`?");
+        let text = error.rendered();
+        assert!(text.contains("[Error: unexpected token]"));
+        assert!(text.contains("help: did you mean `println(...)`?"));
     }
 }

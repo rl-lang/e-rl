@@ -3,6 +3,8 @@
 //! Consumes a run of digits, checks for a `.` to decide between
 //! [`TokenType::NumberLiteral`] and [`TokenType::FloatLiteral`], and handles
 //! byte literals (`0b` prefix -> [`TokenType::ByteLiteral`]).
+use alloc::string::String;
+
 use crate::{tokenizer::Tokenizer, tokentypes::TokenType};
 
 impl Tokenizer {

@@ -1,3 +1,6 @@
+use alloc::vec;
+use alloc::vec::Vec;
+
 /// Find the closest match to `target` from `candidates` using Levenshtein
 /// distance. Returns `Some(name)` only when the best candidate is within
 /// `max(target.len() / 3, 1)` edits - enough to catch typical typos
@@ -42,13 +45,15 @@ fn levenshtein(a: &str, b: &str) -> usize {
                 .min(curr[j - 1] + 1) // insertion
                 .min(prev[j - 1] + cost); // substitution
         }
-        std::mem::swap(&mut prev, &mut curr);
+        core::mem::swap(&mut prev, &mut curr);
     }
     prev[b.len()]
 }
 
 #[cfg(test)]
 mod tests {
+use alloc::string::ToString;
+use alloc::vec;
     use super::closest_match;
     use super::levenshtein;
 

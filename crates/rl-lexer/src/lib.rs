@@ -2,7 +2,7 @@
 //!
 //! # Pipeline position
 //! ```text
-//! source -> Lexer -> [Token] -> Parser -> [Statement] -> Checker -> Evaluator
+//! source -> Lexer -> [Token] -> Parser -> [Statement] -> Compiler -> VM
 //! ```
 //!
 //! # Module layout
@@ -11,6 +11,11 @@
 //! - `scanner` - top-level scan driver called by the pipeline
 //! - `types` - sub-scanners for each literal kind (string, char, number, identifier)
 //! - `utils` - shared cursor helpers used across the sub-scanners
+#![no_std]
+
+#[macro_use]
+extern crate alloc;
+
 mod scanner;
 pub mod tokenizer;
 pub mod tokentypes;

@@ -3,6 +3,9 @@
 //! Every variant the lexer can produce is defined here. Literal-carrying
 //! variants (`NumberLiteral`, `StringLiteral`, etc.) embed their parsed value
 //! directly so downstream passes never need to re-parse raw text.
+use alloc::string::String;
+use alloc::vec::Vec;
+
 use rl_utils::span::Span;
 
 /// Represents every token type the lexer can produce.

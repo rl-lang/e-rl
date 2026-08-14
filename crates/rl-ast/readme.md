@@ -1,16 +1,16 @@
 # rl-ast
 
-> Abstract syntax tree types for the rl-lang programming language
+> Abstract syntax tree types for the embedded RL language
 
-Part of the [rl-lang](https://github.com/rl-lang/rl-lang) workspace.
+Part of the **RL embedded scripting engine** - the `#![no_std]`-only hard fork of the rl-lang toolchain built around the bytecode VM.
 
 ## Pipeline position
 
 ```text
-source -> Lexer -> [Token] -> Parser -> [Statement] -> Checker -> Evaluator
+source -> Lexer -> [Token] -> Parser -> [Statement] -> Resolver -> VM Compiler
 ```
 
-`rl-ast` defines the node types produced by the parser and consumed by every later stage (resolver, checker, interpreter, VM compiler).
+`rl-ast` defines the node types produced by the parser and consumed by every later stage (resolver, compiler, and VM).
 
 ## Modules
 

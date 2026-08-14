@@ -2,6 +2,8 @@
 //!
 //! Consumes everything between `"…"`, handling escape sequences, and emits
 //! [`TokenType::StringLiteral`].
+use alloc::string::String;
+
 use crate::{tokenizer::Tokenizer, tokentypes::TokenType};
 use rl_utils::errors::Error;
 

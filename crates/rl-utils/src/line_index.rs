@@ -1,4 +1,6 @@
-use std::sync::Arc;
+use alloc::rc::Rc;
+use alloc::vec;
+use alloc::vec::Vec;
 
 /// A compact, serializable mapping from byte offsets to 1-indexed
 /// `(line, column)` pairs.
@@ -9,19 +11,18 @@ use std::sync::Arc;
 /// `.rlc` bytecode (which intentionally doesn't ship the original
 /// source). This lets runtime errors raised from `.rlc` bytecode still
 /// report a precise `file:line:col` location instead of a bare message,
-/// without paying the cost (or leaking the source) of a full ariadne
-/// snippet.
+/// without retaining the source text.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct LineIndex {
     /// Displayed in error headers (e.g. `"main.rl"`).
-    source_name: Arc<str>,
+    source_name: Rc<str>,
     /// Byte offset of the start of each line; `line_starts[0] == 0`.
     line_starts: Vec<u32>,
 }
 
 impl LineIndex {
     /// Builds a [`LineIndex`] by scanning `text` for line breaks.
-    pub fn new(source_name: impl Into<Arc<str>>, text: &str) -> Self {
+    pub fn new(source_name: impl Into<Rc<str>>, text: &str) -> Self {
         let mut line_starts = vec![0u32];
         line_starts.extend(
             text.bytes()
@@ -37,14 +38,14 @@ impl LineIndex {
 
     /// Reconstructs a [`LineIndex`] from its raw parts (used when
     /// deserializing from a `.rlc` file).
-    pub fn from_raw(source_name: impl Into<Arc<str>>, line_starts: Vec<u32>) -> Self {
+    pub fn from_raw(source_name: impl Into<Rc<str>>, line_starts: Vec<u32>) -> Self {
         Self {
             source_name: source_name.into(),
             line_starts,
         }
     }
 
-    pub fn source_name(&self) -> &Arc<str> {
+    pub fn source_name(&self) -> &Rc<str> {
         &self.source_name
     }
 
@@ -68,6 +69,7 @@ impl LineIndex {
 
 #[cfg(test)]
 mod tests {
+use alloc::vec;
     use super::LineIndex;
 
     #[test]

@@ -51,7 +51,7 @@ impl Tokenizer {
         let span = self.current_span();
         let mut tok = Token::new(tokentype, lexeme, self.line, span);
         if !matches!(tok.token, TokenType::Newline) {
-            tok.leading_trivia = std::mem::take(&mut self.pending_trivia);
+            tok.leading_trivia = core::mem::take(&mut self.pending_trivia);
             self.newlines_since_trivia = 0;
         }
         self.tokens.push(tok);

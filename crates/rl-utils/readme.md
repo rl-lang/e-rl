@@ -1,12 +1,12 @@
 # rl-utils
 
-> Shared utility functions used across the rl-lang toolchain
+> Shared utility functions used across the embedded RL engine
 
-Part of the [rl-lang](https://github.com/rl-lang/rl-lang) workspace. `rl-utils` sits underneath every other crate in the pipeline - it has no dependency on `rl-ast`, `rl-lexer`, or any other language crate, so it's a safe place for types that need to be shared everywhere without creating dependency cycles.
+Part of the **RL embedded scripting engine** - the `#![no_std]`-only hard fork of the rl-lang toolchain built around the bytecode VM. `rl-utils` sits underneath every other crate in the pipeline - it has no dependency on `rl-ast`, `rl-lexer`, or any other language crate, so it's a safe place for types that need to be shared everywhere without creating dependency cycles.
 
 ## Overview
 
-This crate provides the small set of primitives that every stage of the pipeline (lexer, parser, resolver, checker, evaluator, VM) needs in common:
+This crate provides the small set of primitives that every stage of the pipeline (lexer, parser, resolver, compiler, VM) needs in common:
 
 - Carrying source text and its file name through the pipeline
 - Pointing at an exact location in that source for error messages

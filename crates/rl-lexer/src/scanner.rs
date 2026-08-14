@@ -2,6 +2,9 @@
 //!
 //! Exposes the single entry point that the pipeline calls to turn a source
 //! string into a token stream. Delegates all real work to [`Tokenizer`].
+use alloc::string::String;
+use alloc::string::ToString;
+
 use crate::tokentypes::Trivia;
 use crate::{tokenizer::Tokenizer, tokentypes::TokenType};
 use rl_utils::errors::Error;

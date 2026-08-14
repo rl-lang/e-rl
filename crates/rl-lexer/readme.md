@@ -1,13 +1,13 @@
 # rl-lexer
 
-> Lexer and tokenizer for the rl-lang programming language
+> Lexer and tokenizer for the embedded RL language
 
-Part of the [rl-lang](https://github.com/rl-lang/rl-lang) workspace.
+Part of the **RL embedded scripting engine** - the `#![no_std]`-only hard fork of the rl-lang toolchain built around the bytecode VM.
 
 ## Pipeline position
 
 ```text
-source -> Lexer -> [Token] -> Parser -> [Statement] -> Checker -> Evaluator
+source -> Lexer -> [Token] -> Parser -> [Statement] -> Resolver -> VM Compiler
 ```
 
 `rl-lexer` is the first stage of the pipeline: it converts raw source text into a flat `Vec<Token>` that the parser consumes.

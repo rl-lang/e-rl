@@ -11,6 +11,12 @@
 //!
 //! [`Expression`]: nodes::Expression
 //! [`Statement`]: statements::Statement
+#![no_std]
+
+extern crate alloc;
+
+use alloc::string::String;
+use alloc::vec::Vec;
 use rl_utils::span::Span;
 
 use crate::{
@@ -74,7 +80,7 @@ impl Ast {
         for expr in other_items.iter_mut() {
             remap_expr_kind(&mut expr.kind, offset, target_arena_id);
         }
-        let other_items = std::mem::take(other_items);
+        let other_items = core::mem::take(other_items);
 
         self.exprs.raw_parts_mut().1.extend(other_items);
 
