@@ -200,19 +200,19 @@ fn parse_type(input: ParseStream) -> syn::Result<TokenStream> {
             let content;
             bracketed!(content in input);
             let inner = parse_type(&content)?;
-            scalar(quote!(#ta::Result(Box::new(#inner))))
+            scalar(quote!(#ta::Result(::alloc::boxed::Box::new(#inner))))
         }
         "array" => {
             let content;
             bracketed!(content in input);
             let inner = parse_type(&content)?;
-            scalar(quote!(#ta::Array(Box::new(#inner))))
+            scalar(quote!(#ta::Array(::alloc::boxed::Box::new(#inner))))
         }
         "set" => {
             let content;
             bracketed!(content in input);
             let inner = parse_type(&content)?;
-            scalar(quote!(#ta::Set(Box::new(#inner))))
+            scalar(quote!(#ta::Set(::alloc::boxed::Box::new(#inner))))
         }
         "map" => {
             let content;
@@ -220,7 +220,7 @@ fn parse_type(input: ParseStream) -> syn::Result<TokenStream> {
             let k = parse_type(&content)?;
             content.parse::<Token![,]>()?;
             let v = parse_type(&content)?;
-            scalar(quote!(#ta::Map(Box::new(#k), Box::new(#v))))
+            scalar(quote!(#ta::Map(::alloc::boxed::Box::new(#k), ::alloc::boxed::Box::new(#v))))
         }
         "tuple" => {
             let content;
@@ -234,7 +234,7 @@ fn parse_type(input: ParseStream) -> syn::Result<TokenStream> {
                     break;
                 }
             }
-            scalar(quote!(#ta::Tuple(::std::rc::Rc::new(vec![#(#elems),*]))))
+            scalar(quote!(#ta::Tuple(::alloc::rc::Rc::new(vec![#(#elems),*]))))
         }
         "handle" => {
             let content;
@@ -259,7 +259,7 @@ fn parse_type(input: ParseStream) -> syn::Result<TokenStream> {
             }
             content.parse::<Token![->]>()?;
             let ret = parse_type(&content)?;
-            scalar(quote!(#ta::Callback(vec![#(#params),*], Box::new(#ret))))
+            scalar(quote!(#ta::Callback(vec![#(#params),*], ::alloc::boxed::Box::new(#ret))))
         }
         other => Err(syn::Error::new(
             ident.span(),

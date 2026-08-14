@@ -9,6 +9,7 @@
 //!
 //! Ported once from the former per-runtime `stdlib/math/*.rs` copies.
 
+use alloc::string::ToString;
 use rl_std_core::Runtime;
 use rl_std_macros::native_fn;
 
@@ -19,7 +20,7 @@ pub fn abs<R: Runtime>(_cx: &mut R::Cx, a: R::Value) -> R::Value {
     if let Some(i) = R::as_i64(&a) {
         R::ok(R::from_i64(i.abs()))
     } else if let Some(f) = R::as_f64(&a) {
-        R::ok(R::from_f64(f.abs()))
+        R::ok(R::from_f64(libm::fabs(f)))
     } else {
         R::err(R::from_string(format!(
             "abs() expects a number, got {}",
@@ -33,7 +34,7 @@ pub fn ceil<R: Runtime>(_cx: &mut R::Cx, a: R::Value) -> R::Value {
     if let Some(i) = R::as_i64(&a) {
         R::ok(R::from_i64(i))
     } else if let Some(f) = R::as_f64(&a) {
-        R::ok(R::from_f64(f.ceil()))
+        R::ok(R::from_f64(libm::ceil(f)))
     } else {
         R::err(R::from_string(format!(
             "ceil() expects a number, got {}",
@@ -47,7 +48,7 @@ pub fn floor<R: Runtime>(_cx: &mut R::Cx, a: R::Value) -> R::Value {
     if let Some(i) = R::as_i64(&a) {
         R::ok(R::from_i64(i))
     } else if let Some(f) = R::as_f64(&a) {
-        R::ok(R::from_f64(f.floor()))
+        R::ok(R::from_f64(libm::floor(f)))
     } else {
         R::err(R::from_string(format!(
             "floor expects a number, got {}",
@@ -61,7 +62,7 @@ pub fn round<R: Runtime>(_cx: &mut R::Cx, a: R::Value) -> R::Value {
     if let Some(i) = R::as_i64(&a) {
         R::ok(R::from_i64(i))
     } else if let Some(f) = R::as_f64(&a) {
-        R::ok(R::from_f64(f.round()))
+        R::ok(R::from_f64(libm::round(f)))
     } else {
         R::err(R::from_string(format!(
             "round expects a number, got {}",
@@ -185,11 +186,11 @@ pub fn pow<R: Runtime>(_cx: &mut R::Cx, base: R::Value, exponent: R::Value) -> R
             R::ok(R::from_i64(a.pow(b)))
         }
         // (Int, Float) -> Float
-        (Some(a), _, None, Some(b)) => R::ok(R::from_f64((a as f64).powf(b))),
+        (Some(a), _, None, Some(b)) => R::ok(R::from_f64(libm::pow(a as f64, b))),
         // (Float, Int) -> Float
-        (None, Some(a), Some(b), _) => R::ok(R::from_f64(a.powi(b as i32))),
+        (None, Some(a), Some(b), _) => R::ok(R::from_f64(libm::pow(a, b as f64))),
         // (Float, Float) -> Float
-        (None, Some(a), None, Some(b)) => R::ok(R::from_f64(a.powf(b))),
+        (None, Some(a), None, Some(b)) => R::ok(R::from_f64(libm::pow(a, b))),
         _ => R::err(R::from_string("pow expects numeric arguments".to_string())),
     }
 }
@@ -210,10 +211,10 @@ pub fn log<R: Runtime>(_cx: &mut R::Cx, a: R::Value, base: R::Value) -> R::Value
         R::as_i64(&base),
         R::as_f64(&base),
     ) {
-        (Some(i), _, Some(base), _) => R::ok(R::from_f64((i as f64).log(base as f64))),
-        (Some(i), _, None, Some(base)) => R::ok(R::from_f64((i as f64).log(base))),
-        (None, Some(f), Some(base), _) => R::ok(R::from_f64(f.log(base as f64))),
-        (None, Some(f), None, Some(base)) => R::ok(R::from_f64(f.log(base))),
+        (Some(i), _, Some(base), _) => R::ok(R::from_f64(libm::log(i as f64) / libm::log(base as f64))),
+        (Some(i), _, None, Some(base)) => R::ok(R::from_f64(libm::log(i as f64) / libm::log(base))),
+        (None, Some(f), Some(base), _) => R::ok(R::from_f64(libm::log(f) / libm::log(base as f64))),
+        (None, Some(f), None, Some(base)) => R::ok(R::from_f64(libm::log(f) / libm::log(base))),
         _ => R::err(R::from_string(format!(
             "log expects a number, got ({}, {})",
             R::type_name(&a),
@@ -227,9 +228,9 @@ pub fn log<R: Runtime>(_cx: &mut R::Cx, a: R::Value, base: R::Value) -> R::Value
 #[native_fn(module = "math", sig(int -> result[float]), sig(float -> result[float]))]
 pub fn sqrt<R: Runtime>(_cx: &mut R::Cx, a: R::Value) -> R::Value {
     if let Some(i) = R::as_i64(&a) {
-        R::ok(R::from_f64((i as f64).sqrt()))
+        R::ok(R::from_f64(libm::sqrt(i as f64)))
     } else if let Some(f) = R::as_f64(&a) {
-        R::ok(R::from_f64(f.sqrt()))
+        R::ok(R::from_f64(libm::sqrt(f)))
     } else {
         R::err(R::from_string(format!(
             "sqrt expects a number, got {}",
@@ -241,9 +242,9 @@ pub fn sqrt<R: Runtime>(_cx: &mut R::Cx, a: R::Value) -> R::Value {
 #[native_fn(module = "math", sig(int -> result[float]), sig(float -> result[float]))]
 pub fn log2<R: Runtime>(_cx: &mut R::Cx, a: R::Value) -> R::Value {
     if let Some(i) = R::as_i64(&a) {
-        R::ok(R::from_f64((i as f64).log2()))
+        R::ok(R::from_f64(libm::log2(i as f64)))
     } else if let Some(f) = R::as_f64(&a) {
-        R::ok(R::from_f64(f.log2()))
+        R::ok(R::from_f64(libm::log2(f)))
     } else {
         R::err(R::from_string(format!(
             "log2 expects a number, got {}",
@@ -255,9 +256,9 @@ pub fn log2<R: Runtime>(_cx: &mut R::Cx, a: R::Value) -> R::Value {
 #[native_fn(module = "math", sig(int -> result[float]), sig(float -> result[float]))]
 pub fn log10<R: Runtime>(_cx: &mut R::Cx, a: R::Value) -> R::Value {
     if let Some(i) = R::as_i64(&a) {
-        R::ok(R::from_f64((i as f64).log10()))
+        R::ok(R::from_f64(libm::log10(i as f64)))
     } else if let Some(f) = R::as_f64(&a) {
-        R::ok(R::from_f64(f.log10()))
+        R::ok(R::from_f64(libm::log10(f)))
     } else {
         R::err(R::from_string(format!(
             "log10 expects a number, got {}",
@@ -270,32 +271,32 @@ pub fn log10<R: Runtime>(_cx: &mut R::Cx, a: R::Value) -> R::Value {
 
 #[native_fn(module = "math")]
 pub fn sin(x: f64) -> f64 {
-    x.sin()
+    libm::sin(x)
 }
 
 #[native_fn(module = "math")]
 pub fn cos(x: f64) -> f64 {
-    x.cos()
+    libm::cos(x)
 }
 
 #[native_fn(module = "math")]
 pub fn tan(x: f64) -> f64 {
-    x.tan()
+    libm::tan(x)
 }
 
 #[native_fn(module = "math")]
 pub fn atan(x: f64) -> f64 {
-    x.atan()
+    libm::atan(x)
 }
 
 #[native_fn(module = "math")]
 pub fn acos(x: f64) -> f64 {
-    x.acos()
+    libm::acos(x)
 }
 
 #[native_fn(module = "math")]
 pub fn asin(x: f64) -> f64 {
-    x.asin()
+    libm::asin(x)
 }
 
 #[native_fn(module = "math")]
@@ -310,7 +311,7 @@ pub fn radians(x: f64) -> f64 {
 
 #[native_fn(module = "math")]
 pub fn exp(x: f64) -> f64 {
-    x.exp()
+    libm::exp(x)
 }
 
 #[native_fn(module = "math")]
@@ -326,12 +327,12 @@ pub fn sign(x: f64) -> f64 {
 
 #[native_fn(module = "math")]
 pub fn atan2(x: f64, y: f64) -> f64 {
-    y.atan2(x)
+    libm::atan2(y, x)
 }
 
 #[native_fn(module = "math")]
 pub fn hypot(x: f64, y: f64) -> f64 {
-    x.hypot(y)
+    libm::hypot(x, y)
 }
 
 #[native_fn(module = "math")]
@@ -416,22 +417,22 @@ pub mod constants {
 
     #[native_fn(module = "consts", name = "E")]
     pub fn e() -> f64 {
-        std::f64::consts::E
+        core::f64::consts::E
     }
 
     #[native_fn(module = "consts", name = "PI")]
     pub fn pi() -> f64 {
-        std::f64::consts::PI
+        core::f64::consts::PI
     }
 
     #[native_fn(module = "consts", name = "PHI")]
     pub fn phi() -> f64 {
-        std::f64::consts::GOLDEN_RATIO
+        core::f64::consts::GOLDEN_RATIO
     }
 
     #[native_fn(module = "consts", name = "TAU")]
     pub fn tau() -> f64 {
-        std::f64::consts::TAU
+        core::f64::consts::TAU
     }
 
     #[native_fn(module = "consts", name = "INF")]
@@ -456,87 +457,87 @@ pub mod constants {
 
     #[native_fn(module = "consts", name = "FRAC_1_PI")]
     pub fn frac_1_pi() -> f64 {
-        std::f64::consts::FRAC_1_PI
+        core::f64::consts::FRAC_1_PI
     }
 
     #[native_fn(module = "consts", name = "FRAC_2_PI")]
     pub fn frac_2_pi() -> f64 {
-        std::f64::consts::FRAC_2_PI
+        core::f64::consts::FRAC_2_PI
     }
 
     #[native_fn(module = "consts", name = "FRAC_1_SQRT_2")]
     pub fn frac_1_sqrt_2() -> f64 {
-        std::f64::consts::FRAC_1_SQRT_2
+        core::f64::consts::FRAC_1_SQRT_2
     }
 
     #[native_fn(module = "consts", name = "FRAC_2_SQRT_PI")]
     pub fn frac_2_sqrt_pi() -> f64 {
-        std::f64::consts::FRAC_2_SQRT_PI
+        core::f64::consts::FRAC_2_SQRT_PI
     }
 
     #[native_fn(module = "consts", name = "EULER_GAMMA")]
     pub fn euler_gamma() -> f64 {
-        std::f64::consts::EULER_GAMMA
+        core::f64::consts::EULER_GAMMA
     }
 
     #[native_fn(module = "consts", name = "LN_10")]
     pub fn ln_10() -> f64 {
-        std::f64::consts::LN_10
+        core::f64::consts::LN_10
     }
 
     #[native_fn(module = "consts", name = "LN_2")]
     pub fn ln_2() -> f64 {
-        std::f64::consts::LN_2
+        core::f64::consts::LN_2
     }
 
     #[native_fn(module = "consts", name = "LOG2_E")]
     pub fn log2_e() -> f64 {
-        std::f64::consts::LOG2_E
+        core::f64::consts::LOG2_E
     }
 
     #[native_fn(module = "consts", name = "LOG2_10")]
     pub fn log2_10() -> f64 {
-        std::f64::consts::LOG2_10
+        core::f64::consts::LOG2_10
     }
 
     #[native_fn(module = "consts", name = "LOG10_2")]
     pub fn log10_2() -> f64 {
-        std::f64::consts::LOG10_2
+        core::f64::consts::LOG10_2
     }
 
     #[native_fn(module = "consts", name = "LOG10_E")]
     pub fn log10_e() -> f64 {
-        std::f64::consts::LOG10_E
+        core::f64::consts::LOG10_E
     }
 
     #[native_fn(module = "consts", name = "FRAC_PI_2")]
     pub fn frac_pi_2() -> f64 {
-        std::f64::consts::FRAC_PI_2
+        core::f64::consts::FRAC_PI_2
     }
 
     #[native_fn(module = "consts", name = "FRAC_PI_3")]
     pub fn frac_pi_3() -> f64 {
-        std::f64::consts::FRAC_PI_3
+        core::f64::consts::FRAC_PI_3
     }
 
     #[native_fn(module = "consts", name = "FRAC_PI_4")]
     pub fn frac_pi_4() -> f64 {
-        std::f64::consts::FRAC_PI_4
+        core::f64::consts::FRAC_PI_4
     }
 
     #[native_fn(module = "consts", name = "FRAC_PI_6")]
     pub fn frac_pi_6() -> f64 {
-        std::f64::consts::FRAC_PI_6
+        core::f64::consts::FRAC_PI_6
     }
 
     #[native_fn(module = "consts", name = "FRAC_PI_8")]
     pub fn frac_pi_8() -> f64 {
-        std::f64::consts::FRAC_PI_8
+        core::f64::consts::FRAC_PI_8
     }
 
     #[native_fn(module = "consts", name = "SQRT_2")]
     pub fn sqrt_2() -> f64 {
-        std::f64::consts::SQRT_2
+        core::f64::consts::SQRT_2
     }
 
     rl_std_core::native_module!("consts";

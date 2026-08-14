@@ -1,16 +1,19 @@
-//! Runtime-agnostic core for the rl-lang standard library.
+//! Runtime-agnostic core for the embedded RL standard library.
 //!
-//! This crate holds everything the shared stdlib (`rl-std`) and both runtimes
-//! (`rl-vm`, `rl-interpreter`) need in common, without referencing either
-//! runtime's value type - so it can sit below both in the dependency graph:
+//! This crate holds everything the shared stdlib (`rl-std`) and the runtime
+//! (`rl-vm`) need in common, without referencing the runtime's value type - so
+//! it can sit below it in the dependency graph:
 //!
-//! - [`Runtime`] / [`HandleStore`] - the abstraction each runtime implements,
+//! - [`Runtime`] / [`HandleStore`] - the abstraction the runtime implements,
 //! - [`NativeHandle`] / [`Arity`] - the thin-`fn`-pointer native descriptor,
 //! - [`ValueType`] / [`FromValueR`] / [`IntoValueR`] - value <-> Rust type
 //!   conversions,
-//! - [`StdFn`] / [`ModuleNames`] - the checker signature types (moved here from
-//!   `rl-commons`),
+//! - [`StdFn`] / [`ModuleNames`] - the checker signature types,
 //! - [`Xoshiro256`] - the shared PRNG.
+#![no_std]
+
+#[macro_use]
+extern crate alloc;
 
 pub mod convert;
 pub mod handle;

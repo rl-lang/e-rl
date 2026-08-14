@@ -7,6 +7,7 @@
 //! language `result[...]`, so the bodies operate on `R::Value` directly via
 //! `R::as_u8`/`R::as_i64` and build the wrapped `ok`/`err` themselves.
 
+use alloc::string::ToString;
 use rl_std_core::Runtime;
 use rl_std_macros::native_fn;
 

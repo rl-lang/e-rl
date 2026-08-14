@@ -6,6 +6,9 @@
 //! return a PROPAGATING `Result<R::Value, Error>`. `dbg` / `type_of` / `bench`
 //! were plain `with_function`s.
 
+use alloc::string::String;
+use alloc::string::ToString;
+use alloc::vec::Vec;
 use rl_std_core::Runtime;
 use rl_std_macros::native_fn;
 use rl_utils::errors::Error;
@@ -438,47 +441,9 @@ pub fn dbg<R: Runtime>(cx: &mut R::Cx, value: R::Value) -> R::Value {
 
     if let Some(buffer) = R::output_buffer(cx) {
         buffer.push_str(&text);
-    } else {
-        eprint!("{}", text);
     }
 
     value
-}
-
-#[native_fn(module = "debug", sig(fn, int -> result[float]))]
-pub fn bench<R: Runtime>(
-    cx: &mut R::Cx,
-    function: R::Value,
-    iterations: i64,
-    span: R::Span,
-) -> Result<f64, String> {
-    if !R::is_callable(&function) {
-        return Err(format!(
-            "bench: expects a function or lambda, got {}",
-            R::type_name(&function)
-        ));
-    }
-
-    // The old body matched the raw value; a non-int is already rejected by the
-    // typed `int` extraction, so the only surviving failure here is a
-    // non-positive int, whose original `type_name()` was `"int"`.
-    if iterations <= 0 {
-        return Err("bench: expects a positive int for iterations, got int".to_string());
-    }
-    let iterations = iterations as u64;
-
-    let start = std::time::Instant::now();
-    for _ in 0..iterations {
-        if let Err(e) = R::call_value(cx, &function, &[], span) {
-            return Err(format!(
-                "bench: error executing the function: {}",
-                e.message()
-            ));
-        }
-    }
-    let elapsed_ms = start.elapsed().as_secs_f64() * 1000.0;
-
-    Ok(elapsed_ms)
 }
 
 rl_std_core::native_module!("debug";
@@ -487,6 +452,6 @@ rl_std_core::native_module!("debug";
         assert_lt, assert_le, assert_gt, assert_ge,
         assert_approx_eq,
         panic, unreachable, todo,
-        dbg, type_of, bench,
+        dbg, type_of,
     ],
 );

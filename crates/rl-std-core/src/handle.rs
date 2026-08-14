@@ -8,6 +8,10 @@
 //! dispatch, and the whole descriptor stays `Copy` so the VM can embed it as a
 //! bytecode constant.
 
+use alloc::string::String;
+use alloc::string::ToString;
+use alloc::vec::Vec;
+
 use crate::runtime::Runtime;
 use crate::signatures::StdFn;
 use rl_utils::errors::Error;
@@ -78,8 +82,8 @@ impl<R: Runtime> Clone for NativeHandle<R> {
 }
 impl<R: Runtime> Copy for NativeHandle<R> {}
 
-impl<R: Runtime> std::fmt::Debug for NativeHandle<R> {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+impl<R: Runtime> core::fmt::Debug for NativeHandle<R> {
+    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
         write!(f, "NativeHandle({})", self.name)
     }
 }

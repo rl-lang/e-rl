@@ -28,10 +28,9 @@ macro_rules! native_module {
         bound: $bound:path;
         funcs: [ $($func:ident),* $(,)? ] $(,)?
     ) => {
-        /// The runtime native-function handles for this module (needs `impls`).
-        #[cfg(feature = "impls")]
-        pub fn handles<R: $crate::Runtime + $bound>() -> ::std::vec::Vec<$crate::NativeHandle<R>> {
-            ::std::vec![ $( $func::handle::<R>() ),* ]
+        /// The runtime native-function handles for this module.
+        pub fn handles<R: $crate::Runtime + $bound>() -> ::alloc::vec::Vec<$crate::NativeHandle<R>> {
+            ::alloc::vec![ $( $func::handle::<R>() ),* ]
         }
 
         /// The checker signature tree for this module (always available).
@@ -50,10 +49,9 @@ macro_rules! native_module {
         funcs: [ $($func:ident),* $(,)? ]
         $(, mods: [ $($sub:ident),* $(,)? ] )? $(,)?
     ) => {
-        /// The runtime native-function handles for this module (needs `impls`).
-        #[cfg(feature = "impls")]
-        pub fn handles<R: $crate::Runtime>() -> ::std::vec::Vec<$crate::NativeHandle<R>> {
-            ::std::vec![ $( $func::handle::<R>() ),* ]
+        /// The runtime native-function handles for this module.
+        pub fn handles<R: $crate::Runtime>() -> ::alloc::vec::Vec<$crate::NativeHandle<R>> {
+            ::alloc::vec![ $( $func::handle::<R>() ),* ]
         }
 
         /// The checker signature tree for this module (always available).

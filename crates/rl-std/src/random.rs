@@ -5,6 +5,9 @@
 //! functions share this single instance. Ported once from the former
 //! per-runtime `stdlib/random/*.rs` copies.
 
+use alloc::string::String;
+use alloc::string::ToString;
+use alloc::vec::Vec;
 use rl_std_core::Runtime;
 use rl_std_macros::native_fn;
 

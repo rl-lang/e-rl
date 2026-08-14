@@ -170,9 +170,9 @@ pub fn expand(attr: NativeFnAttr, func: ItemFn) -> syn::Result<TokenStream> {
         #[allow(unused_variables, unused_mut, clippy::let_unit_value)]
         pub fn wrapper<R: #r_bound>(
             cx: &mut <R as ::rl_std_core::Runtime>::Cx,
-            args: ::std::vec::Vec<<R as ::rl_std_core::Runtime>::Value>,
+            args: ::alloc::vec::Vec<<R as ::rl_std_core::Runtime>::Value>,
             span: <R as ::rl_std_core::Runtime>::Span,
-        ) -> ::std::result::Result<<R as ::rl_std_core::Runtime>::Value, ::rl_utils::errors::Error> {
+        ) -> ::core::result::Result<<R as ::rl_std_core::Runtime>::Value, ::rl_utils::errors::Error> {
             #arity_check
             #iter_decl
             #(#stmts)*
@@ -188,7 +188,7 @@ pub fn expand(attr: NativeFnAttr, func: ItemFn) -> syn::Result<TokenStream> {
         let rows = attr.overloads.iter().map(|o| {
             let ps = &o.params;
             let r = &o.ret;
-            quote!((#ta::Tuple(::std::rc::Rc::new(vec![#(#ps),*])), #r))
+            quote!((#ta::Tuple(::alloc::rc::Rc::new(vec![#(#ps),*])), #r))
         });
         quote!(::rl_std_core::StdFn::typed(#rl_name, vec![#(#rows),*]))
     } else {
@@ -208,14 +208,14 @@ pub fn expand(attr: NativeFnAttr, func: ItemFn) -> syn::Result<TokenStream> {
             Ret::Concrete(ty) => quote!(<#ty as ::rl_std_core::ValueType>::type_annotation()),
             Ret::Fallible(inner) => quote!(<#inner as ::rl_std_core::ValueType>::type_annotation()),
             Ret::LangResult(inner) => {
-                quote!(#ta::Result(Box::new(<#inner as ::rl_std_core::ValueType>::type_annotation())))
+                quote!(#ta::Result(::alloc::boxed::Box::new(<#inner as ::rl_std_core::ValueType>::type_annotation())))
             }
             Ret::Raw => unreachable!("has_raw guard above"),
         };
         quote! {
             ::rl_std_core::StdFn::typed(
                 #rl_name,
-                vec![(#ta::Tuple(::std::rc::Rc::new(vec![#(#param_anns),*])), #ret_ann)],
+                vec![(#ta::Tuple(::alloc::rc::Rc::new(vec![#(#param_anns),*])), #ret_ann)],
             )
         }
     };
@@ -233,7 +233,6 @@ pub fn expand(attr: NativeFnAttr, func: ItemFn) -> syn::Result<TokenStream> {
     // feature - this is what lets the checker read every module's signatures
     // without compiling eframe/rodio/libffi.
     Ok(quote! {
-        #[cfg(feature = "impls")]
         #func
 
         #[doc(hidden)]
@@ -245,14 +244,21 @@ pub fn expand(attr: NativeFnAttr, func: ItemFn) -> syn::Result<TokenStream> {
                 #signature
             }
 
-            #[cfg(feature = "impls")]
+            // The nested module cannot rely on the std prelude in a `no_std`
+            // consumer crate, so bring in the alloc types the generated code
+            // references (explicit imports shadow the `super::*` glob).
+            #[allow(unused_imports)]
+            use ::alloc::string::String;
+            #[allow(unused_imports)]
+            use ::alloc::string::ToString;
+            #[allow(unused_imports)]
+            use ::alloc::vec::Vec;
+
             #[allow(unused_imports)]
             use super::*;
 
-            #[cfg(feature = "impls")]
             #wrapper
 
-            #[cfg(feature = "impls")]
             pub fn handle<R: #r_bound>() -> ::rl_std_core::NativeHandle<R> {
                 ::rl_std_core::NativeHandle {
                     name: #rl_name,

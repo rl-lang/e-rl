@@ -1,21 +1,21 @@
 //! The [`Runtime`] abstraction: the single trait that lets every stdlib
 //! function be written once (generic over `R: Runtime`) and monomorphized into
-//! a thin function pointer for each runtime (the bytecode VM and the
-//! tree-walking interpreter).
+//! a thin function pointer for the bytecode VM.
 //!
 //! It carries three associated types:
-//! - [`Runtime::Value`] - the runtime's value enum (`VmValue` / `Value`),
-//! - [`Runtime::Cx`] - the mutable context threaded through calls (`Vm` /
-//!   `Evaluator`),
+//! - [`Runtime::Value`] - the runtime's value enum (`VmValue`),
+//! - [`Runtime::Cx`] - the mutable context threaded through calls (`Vm`),
 //! - [`Runtime::Span`] - the call-site span type: `()` on the VM (which
-//!   re-anchors native errors after the fact via `Vm::annotate`) and a real
-//!   [`rl_utils::span::Span`] on the interpreter.
+//!   re-anchors native errors after the fact via `Vm::annotate`).
 //!
 //! The compound-value constructors ([`Runtime::array`], [`Runtime::map`], ...)
 //! all take a [`TypeAnnotation`]: the interpreter stores it (as `items_type`
 //! / `key_type`), while the VM impl discards it. This lets one stdlib source
 //! line stay valid for both runtimes without leaking the asymmetry into the
 //! function bodies.
+
+use alloc::string::String;
+use alloc::vec::Vec;
 
 use crate::rng::Xoshiro256;
 use rl_ast::statements::{HandleKind, TypeAnnotation};

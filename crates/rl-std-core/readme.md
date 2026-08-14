@@ -1,17 +1,17 @@
 # rl-std-core
 
-> Runtime-agnostic core for the rl-lang standard library: the `Runtime` abstraction, native-function descriptors, value conversions, and stdlib signatures
+> Runtime-agnostic core for the embedded RL standard library: the `Runtime` abstraction, native-function descriptors, value conversions, and stdlib signatures
 
-Part of the [rl-lang](https://github.com/rl-lang/rl-lang) workspace.
+Part of the **RL embedded scripting engine** - the `#![no_std]`-only hard fork of the rl-lang toolchain built around the bytecode VM.
 
 ## Overview
 
-Holds what the shared stdlib (`rl-std`) and both runtimes (`rl-vm`, `rl-interpreter`) need in common, without referencing either runtime's value type, so it can sit below both in the dependency graph:
+Holds what the shared stdlib (`rl-std`) and the runtime (`rl-vm`) need in common, without referencing the runtime's value type, so it can sit below it in the dependency graph:
 
-- The `Runtime` trait each runtime implements, plus the shared `HandleStore` for opaque resource handles
+- The `Runtime` trait the runtime implements, plus the shared `HandleStore` for opaque resource handles
 - The thin-`fn`-pointer native descriptor (`NativeHandle` / `Arity`)
 - Value <-> Rust type conversions (`ValueType` / `FromValueR` / `IntoValueR`)
-- The checker signature types (`StdFn` / `ModuleNames`)
+- The signature types (`StdFn` / `ModuleNames`)
 - `Xoshiro256`, the shared PRNG
 
 ## Modules
@@ -23,7 +23,7 @@ Holds what the shared stdlib (`rl-std`) and both runtimes (`rl-vm`, `rl-interpre
 | `convert` | `ValueType`, `FromValueR`, `IntoValueR` value <-> Rust type conversions |
 | `module` | Module builders that aggregate per-function handles and signatures |
 | `rng` | `Xoshiro256` - the shared PRNG |
-| `signatures` | `StdFn`, `ModuleNames` - checker signature types |
+| `signatures` | `StdFn`, `ModuleNames` - signature types |
 
 ## Dependencies
 

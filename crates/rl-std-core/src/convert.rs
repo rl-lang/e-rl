@@ -10,6 +10,11 @@
 //! These replace the per-runtime `FromValue`/`IntoValue`/`ValueType` traits in
 //! the old `native.rs` files.
 
+use alloc::boxed::Box;
+use alloc::borrow::ToOwned;
+use alloc::string::String;
+use alloc::vec::Vec;
+
 use crate::runtime::Runtime;
 use rl_ast::statements::TypeAnnotation;
 

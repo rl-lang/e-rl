@@ -6,14 +6,16 @@
 //! Ported once from the former per-runtime `stdlib/types/*.rs` copies. The
 //! conversion functions are value-polymorphic: they take a raw `R::Value`,
 //! inspect it with `R::as_*`, and return a language `result[T]` value built
-//! from `R::ok`/`R::err`. Their explicit `sig(...)` overloads mirror
-//! `rl-commons/src/stdlib_signatures/types.rs`.
+//! from `R::ok`/`R::err`. Their explicit `sig(...)` overloads mirror the
+//! original toolchain signatures.
 //!
 //! The scalar extractors are type-precise: `R::as_i64` matches only `int`,
 //! `R::as_u8` only `byte`, `R::as_f64` only `float`, etc. (never a widened /
 //! sibling numeric type). This mirrors the old `match VmValue::Int(v)` arms
 //! exactly, so the conversion bodies below need no extra `type_name` guards.
 
+use alloc::string::String;
+use alloc::string::ToString;
 use rl_std_core::Runtime;
 use rl_std_macros::native_fn;
 

@@ -4,8 +4,7 @@ version.workspace = true
 readme = "readme.md"
 edition.workspace = true
 license.workspace = true
-description = "Procedural macros for the rl-lang standard library: #[native_fn] lowers a Rust function into a thin-pointer native descriptor plus its checker signature"
-repository.workspace = true
+description = "Procedural macros for the embedded RL standard library: #[native_fn] lowers a Rust function into a thin-pointer native descriptor plus its signature"
 
 [lib]
 proc-macro = true

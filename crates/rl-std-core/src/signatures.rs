@@ -1,9 +1,10 @@
 //! Typed `(params, return_type)` signatures for `std` functions and the
-//! module tree that holds them (rl-lang#250).
+//! module tree that holds them.
 //!
-//! Moved here from `rl-commons` so the single stdlib source (`rl-std`) can
-//! emit signatures next to the implementations via `#[native_fn]`, and the
-//! checker/LSP can consume them without depending on either runtime.
+//! Moved out of the original toolchain's signature registry so the single
+//! stdlib source (`rl-std`) can emit signatures next to the implementations
+//! via `#[native_fn]`, and the compiler can consume them without depending on
+//! the runtime.
 //!
 //! Each entry in [`StdFn::signatures`] is one accepted overload:
 //! `(params, return_type)`. `params` is a [`TypeAnnotation::Tuple`] listing the
@@ -15,8 +16,11 @@
 //! A function with an **empty** `signatures` vec is "not yet typed": the
 //! checker treats calls to it as fully permissive.
 
+use alloc::string::String;
+use alloc::string::ToString;
+use alloc::vec::Vec;
+use hashbrown::HashMap;
 use rl_ast::statements::TypeAnnotation;
-use std::collections::HashMap;
 
 /// A `std` function's known signature(s), used by the checker to validate
 /// call arguments and infer the result type statically.

@@ -6,9 +6,10 @@
 //! These functions are value-polymorphic: they inspect / unwrap `Ok(..)` /
 //! `Err(..)` values, so they take a raw `R::Value` and use the `R::as_ok_inner`
 //! / `R::as_err_inner` accessors. Their explicit `sig(...)` overloads mirror
-//! `rl-commons/src/stdlib_signatures/res.rs` (`result_unwrap_err`,
-//! `result_map`, and `result_map_err` were registered untyped there).
+//! the original toolchain's signatures (`result_unwrap_err`, `result_map`,
+//! and `result_map_err` were registered untyped there).
 
+use alloc::string::ToString;
 use rl_std_core::Runtime;
 use rl_std_macros::native_fn;
 use rl_utils::errors::Error;

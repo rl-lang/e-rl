@@ -21,6 +21,9 @@
 //! `items_type`; and `arr_fill` / `arr_map` tag their output with
 //! `TypeAnnotation::Infer` instead of a precisely inferred element type.
 
+use alloc::string::ToString;
+use alloc::vec::Vec;
+use alloc::rc::Rc;
 use rl_ast::statements::TypeAnnotation;
 use rl_std_core::Runtime;
 use rl_std_macros::native_fn;
@@ -380,7 +383,7 @@ pub fn arr_max<R: Runtime>(_cx: &mut R::Cx, array: R::Value) -> R::Value {
         match slice
             .iter()
             .filter_map(|v| R::as_f64(v))
-            .max_by(|a, b| a.partial_cmp(b).unwrap_or(std::cmp::Ordering::Equal))
+            .max_by(|a, b| a.partial_cmp(b).unwrap_or(core::cmp::Ordering::Equal))
         {
             Some(max) => R::ok(R::from_f64(max)),
             None => R::err(R::from_string("arr_max: called on empty array".to_string())),
@@ -409,7 +412,7 @@ pub fn arr_min<R: Runtime>(_cx: &mut R::Cx, array: R::Value) -> R::Value {
         match slice
             .iter()
             .filter_map(|v| R::as_f64(v))
-            .min_by(|a, b| a.partial_cmp(b).unwrap_or(std::cmp::Ordering::Equal))
+            .min_by(|a, b| a.partial_cmp(b).unwrap_or(core::cmp::Ordering::Equal))
         {
             Some(min) => R::ok(R::from_f64(min)),
             None => R::err(R::from_string("arr_min: called on empty array".to_string())),
@@ -444,7 +447,7 @@ pub fn arr_sort<R: Runtime>(_cx: &mut R::Cx, array: R::Value) -> R::Value {
         let mut items = slice.to_vec();
         items.sort_by(|a, b| match (R::as_i64(a), R::as_i64(b)) {
             (Some(x), Some(y)) => x.cmp(&y),
-            _ => std::cmp::Ordering::Equal,
+            _ => core::cmp::Ordering::Equal,
         });
         return R::ok(R::array(items, elem));
     }
@@ -452,8 +455,8 @@ pub fn arr_sort<R: Runtime>(_cx: &mut R::Cx, array: R::Value) -> R::Value {
     if slice.iter().all(|v| R::as_f64(v).is_some()) {
         let mut items = slice.to_vec();
         items.sort_by(|a, b| match (R::as_f64(a), R::as_f64(b)) {
-            (Some(x), Some(y)) => x.partial_cmp(&y).unwrap_or(std::cmp::Ordering::Equal),
-            _ => std::cmp::Ordering::Equal,
+            (Some(x), Some(y)) => x.partial_cmp(&y).unwrap_or(core::cmp::Ordering::Equal),
+            _ => core::cmp::Ordering::Equal,
         });
         return R::ok(R::array(items, elem));
     }
@@ -462,7 +465,7 @@ pub fn arr_sort<R: Runtime>(_cx: &mut R::Cx, array: R::Value) -> R::Value {
         let mut items = slice.to_vec();
         items.sort_by(|a, b| match (R::as_str(a), R::as_str(b)) {
             (Some(x), Some(y)) => x.cmp(y),
-            _ => std::cmp::Ordering::Equal,
+            _ => core::cmp::Ordering::Equal,
         });
         return R::ok(R::array(items, elem));
     }
@@ -498,7 +501,7 @@ pub fn arr_zip<R: Runtime>(
         .zip(slice2.iter())
         .map(|(x, y)| R::tuple(vec![x.clone(), y.clone()]))
         .collect();
-    let tuple_ty = TypeAnnotation::Tuple(std::rc::Rc::new(vec![elem1, elem2]));
+    let tuple_ty = TypeAnnotation::Tuple(Rc::new(vec![elem1, elem2]));
     Ok(R::array(items, tuple_ty))
 }
 
@@ -525,7 +528,7 @@ pub fn arr_map<R: Runtime>(
     }
     let mut out = Vec::with_capacity(slice.len());
     for item in slice {
-        out.push(R::call_value(cx, &f, std::slice::from_ref(item), span)?);
+        out.push(R::call_value(cx, &f, core::slice::from_ref(item), span)?);
     }
     // The interpreter infers the result element type from the first item; that
     // helper is not in the shared API, so the output element type is `Infer`
@@ -562,7 +565,7 @@ pub fn arr_filter<R: Runtime>(
     }
     let mut out = Vec::new();
     for item in slice {
-        let keep = R::call_value(cx, &f, std::slice::from_ref(item), span)?;
+        let keep = R::call_value(cx, &f, core::slice::from_ref(item), span)?;
         if R::as_bool(&keep) == Some(true) {
             out.push(item.clone());
         }
@@ -598,7 +601,7 @@ pub fn arr_find<R: Runtime>(
         ))));
     }
     for item in slice {
-        let hit = R::call_value(cx, &f, std::slice::from_ref(item), span)?;
+        let hit = R::call_value(cx, &f, core::slice::from_ref(item), span)?;
         if R::as_bool(&hit) == Some(true) {
             return Ok(R::ok(item.clone()));
         }
@@ -634,7 +637,7 @@ pub fn arr_find_index<R: Runtime>(
         ))));
     }
     for (i, item) in slice.iter().enumerate() {
-        let hit = R::call_value(cx, &f, std::slice::from_ref(item), span)?;
+        let hit = R::call_value(cx, &f, core::slice::from_ref(item), span)?;
         if R::as_bool(&hit) == Some(true) {
             return Ok(R::ok(R::from_i64(i as i64)));
         }
@@ -669,7 +672,7 @@ pub fn arr_all<R: Runtime>(
         ))));
     }
     for item in slice {
-        let v = R::call_value(cx, &f, std::slice::from_ref(item), span)?;
+        let v = R::call_value(cx, &f, core::slice::from_ref(item), span)?;
         if R::as_bool(&v) == Some(false) {
             return Ok(R::ok(R::from_bool(false)));
         }
@@ -704,7 +707,7 @@ pub fn arr_any<R: Runtime>(
         ))));
     }
     for item in slice {
-        let v = R::call_value(cx, &f, std::slice::from_ref(item), span)?;
+        let v = R::call_value(cx, &f, core::slice::from_ref(item), span)?;
         if R::as_bool(&v) == Some(true) {
             return Ok(R::ok(R::from_bool(true)));
         }
@@ -741,7 +744,7 @@ pub fn arr_flat_map<R: Runtime>(
     }
     let mut out = Vec::with_capacity(slice.len());
     for item in slice {
-        let mapped = R::call_value(cx, &f, std::slice::from_ref(item), span)?;
+        let mapped = R::call_value(cx, &f, core::slice::from_ref(item), span)?;
         if let Some((inner, _)) = R::as_array(&mapped) {
             out.extend(inner.iter().cloned());
         }
@@ -779,7 +782,7 @@ pub fn arr_for_each<R: Runtime>(
         ))));
     }
     for item in slice {
-        R::call_value(cx, &f, std::slice::from_ref(item), span)?;
+        R::call_value(cx, &f, core::slice::from_ref(item), span)?;
     }
     Ok(R::ok(R::null()))
 }

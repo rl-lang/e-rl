@@ -4,6 +4,9 @@
 //! with the `str` primitive. Ported once from the former per-runtime
 //! `stdlib/string/*.rs` copies.
 
+use alloc::string::String;
+use alloc::string::ToString;
+use alloc::vec::Vec;
 use rl_std_core::Runtime;
 use rl_std_macros::native_fn;
 use rl_utils::errors::Error;

@@ -5,8 +5,8 @@
 //!
 //! These functions are value-polymorphic over the element/key/value types, so
 //! they take raw `R::Value` arguments and use dedicated `Runtime` accessors to
-//! read and rebuild sets/maps. Their explicit `sig(...)` overloads mirror
-//! `rl-commons/src/stdlib_signatures/collections.rs` (`set[T]`, `map[K, V]`).
+//! read and rebuild sets/maps. Their explicit `sig(...)` overloads mirror the
+//! original toolchain signatures (`set[T]`, `map[K, V]`).
 //!
 //! Every function returns a language `result[T]` value (`ok(..)` / `err(..)`),
 //! matching the old `vok!` / `verr!` bodies. The hot mutating/query operations
@@ -17,10 +17,11 @@
 //! function genuinely needs every element (`set_to_array`, `map_to_array`,
 //! `map_keys`, `map_values`).
 
+use alloc::vec::Vec;
+use alloc::rc::Rc;
 use rl_ast::statements::TypeAnnotation;
 use rl_std_core::Runtime;
 use rl_std_macros::native_fn;
-use std::rc::Rc;
 
 // ---- sets -----------------------------------------------------------------
 

@@ -1,4 +1,4 @@
-//! Procedural macros for the rl-lang standard library.
+//! Procedural macros for the RL standard library.
 //!
 //! `#[native_fn(...)]` lowers an annotated stdlib function into:
 //! - a generic thin-`fn`-pointer wrapper (`wrapper::<R>`) that arity-checks,

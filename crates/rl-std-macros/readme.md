@@ -1,15 +1,15 @@
 # rl-std-macros
 
-> Procedural macros for the rl-lang standard library: `#[native_fn]` lowers a Rust function into a thin-pointer native descriptor plus its checker signature
+> Procedural macros for the embedded RL standard library: `#[native_fn]` lowers a Rust function into a thin-pointer native descriptor plus its signature
 
-Part of the [rl-lang](https://github.com/rl-lang/rl-lang) workspace.
+Part of the **RL embedded scripting engine** - the `#![no_std]`-only hard fork of the rl-lang toolchain built around the bytecode VM.
 
 ## Overview
 
 `#[native_fn(...)]` lowers an annotated stdlib function into:
 
 - a generic thin-`fn`-pointer wrapper (`wrapper::<R>`) that arity-checks, extracts each argument, calls the body, and converts the result
-- a `signature()` builder producing the checker's `StdFn`
+- a `signature()` builder producing the `StdFn`
 - a `handle::<R>()` builder producing a `NativeHandle`
 
 The three are placed in a `mod <fn-name>` beside the (unchanged) function, so `mod::handle::<R>()` / `mod::signature()` can be aggregated by the module builders in `rl-std`.

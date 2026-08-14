@@ -1,11 +1,11 @@
 //! Xoshiro256** pseudo-random number generator.
 //!
-//! A fast, high-quality 256-bit state PRNG. Seeded from [`std::time::SystemTime`]
-//! at construction. The seed is spread across 4 `u64` state words using the
-//! finalizer from `splitmix64` (golden ratio + two mixing steps).
-//!
-//! Moved here from the per-runtime `stdlib/random/xoshiro.rs` copies so both
-//! the VM and the interpreter share one implementation via the shared stdlib.
+//! A fast, high-quality 256-bit state PRNG. There is no system clock or
+//! entropy source on bare metal, so the default seed is a fixed constant;
+//! the host can supply its own entropy via [`Xoshiro256::with_seed`] (e.g.
+//! from an RNG peripheral or a boot-time seed). The seed is spread across 4
+//! `u64` state words using the finalizer from `splitmix64` (golden ratio +
+//! two mixing steps).
 
 pub struct Xoshiro256 {
     /// The 256-bit PRNG state as four `u64` words.
@@ -20,11 +20,11 @@ impl Default for Xoshiro256 {
 
 impl Xoshiro256 {
     fn new() -> Self {
-        let seed = std::time::SystemTime::now()
-            .duration_since(std::time::UNIX_EPOCH)
-            .map(|d| d.as_nanos() as u64)
-            .unwrap_or(12345);
+        Self::with_seed(0x9e37_79b9_7f4a_7c15)
+    }
 
+    /// Constructs the PRNG with a host-provided seed.
+    pub fn with_seed(seed: u64) -> Self {
         // spread the seed into 4 u64
         let mut state = [0u64; 4];
         let mut x = seed;
