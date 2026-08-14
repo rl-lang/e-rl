@@ -1,18 +1,11 @@
 [package]
 name = "rl-tests"
 version.workspace = true
-readme = "readme.md"
 edition.workspace = true
-publish = false
+license.workspace = true
+description = "Host-side integration test harness for the no_std RL scripting engine"
 
-[dev-dependencies]
-rl-ast.workspace = true
-rl-lexer.workspace = true
-rl-parser.workspace = true
-rl-interpreter.workspace = true
-rl-utils.workspace = true
+[dependencies]
+rl-embed.workspace = true
 rl-vm.workspace = true
-rl-checker.workspace = true
-rl-commons.workspace = true
-rl-tooling.workspace = true
-tempfile.workspace = true
+rl-utils.workspace = true
