@@ -1,197 +1,95 @@
 <div align="center">
   <img src="assets/logo-circle.svg" width="200">
   <h1>RL</h1>
-  <p>A statically-typed interpreted language written in Rust with a clean syntax, a TUI REPL, and a growing standard library.</p>
+  <p>A statically-typed scripting language for bare-metal and embedded applications, written in Rust.</p>
 </div>
 
-<!-- Static Project Info -->
-[![Discord](https://img.shields.io/badge/Discord-5865F2?style=for-the-badge&logo=discord&logoColor=white)](https://discord.gg/9T9mB4VJB)
 [![Rust](https://img.shields.io/badge/Made%20with-Rust-000000?style=for-the-badge&logo=rust&logoColor=white)](https://www.rust-lang.org/)
-[![License](https://img.shields.io/badge/License-MIT%20OR%20Apache--2.0-blue?style=for-the-badge)](https://github.com/rl-lang/rl-lang/blob/main/LICENSE)
+[![License](https://img.shields.io/badge/License-MIT%20OR%20Apache--2.0-blue?style=for-the-badge)](LICENSE.md)
+[![no_std](https://img.shields.io/badge/std-no__std-red?style=for-the-badge)](crates/rl-vm/src/lib.rs)
 
-<!-- Website Status -->
-[![Website](https://img.shields.io/website?url=https%3A%2F%2Frl-lang.github.io%2Fthe-book%2F&label=Wiki&message=online&style=for-the-badge)](https://rl-lang.github.io/the-book/)
-[![Website](https://img.shields.io/website?url=https%3A%2F%2Frl-lang.github.io%2Frl-lang%2F&label=api-docs&message=online&style=for-the-badge)](https://rl-lang.github.io/rl-lang/)
+## What this is
 
-<!-- Repository & Package Metrics -->
-[![Last Commit](https://img.shields.io/github/last-commit/rl-lang/rl-lang?style=for-the-badge)](https://github.com/rl-lang/rl-lang/commits/main)
-[![Crates.io](https://img.shields.io/crates/v/rl_cli?style=for-the-badge)](https://crates.io/crates/rl-cli)
-[![Crates.io Downloads](https://img.shields.io/crates/d/rl_cli?style=for-the-badge)](https://crates.io/crates/rl-cli)
-[![GitHub Repo stars](https://img.shields.io/github/stars/rl-lang/rl-lang?style=for-the-badge)](https://github.com/rl-lang/rl-lang)
+RL is the **RL embedded scripting engine**: a hard fork of the rl-lang toolchain, rebuilt as a
+`#![no_std]`-only language runtime that runs on bare metal and custom kernels.
 
-<!-- CI/CD -->
-[![Check CI](https://github.com/rl-lang/rl-lang/actions/workflows/check.yaml/badge.svg)](https://github.com/rl-lang/rl-lang/actions/workflows/check.yaml)
-[![Release](https://github.com/rl-lang/rl-lang/actions/workflows/release.yml/badge.svg)](https://github.com/rl-lang/rl-lang/actions/workflows/release.yml)
+It keeps the RL language and its bytecode VM, and drops everything that assumes a hosted OS -
+the CLI, TUI REPL, type checker, language server, tree-walking interpreter, and every OS-facing
+stdlib module (filesystem, network, GUI, audio, C interop, ...).
+
+The full pipeline compiles and executes entirely in a single-threaded, `alloc`-based environment:
+
+```text
+source -> Lexer -> Parser -> Resolver -> Compiler -> Chunk -> Vm
+```
+
+## What ships
+
+| Component | What it provides |
+|---|---|
+| `rl-embed` | The host-facing entry point: `compile`, `run`, output-buffer and PRNG-seed helpers |
+| `rl-vm` | Stack-based bytecode VM, `Chunk`/`OpCode`, `.rlc` bytecode serialization, VM stdlib |
+| `rl-std` | Pure-computation stdlib modules: `array`, `bitwise`, `collections`, `debug`, `io` (print/println into a capture buffer), `math`, `random`, `result`, `str`, `types` |
+| `rl-parser` / `rl-resolver` / `rl-ast` / `rl-lexer` | The compile pipeline |
+| `rl-std-core` / `rl-std-macros` | Runtime-agnostic stdlib core and the `#[native_fn]` proc macro |
+| `rl-tests` | Host-side integration test harness |
+
+The VM and stdlib are `#![no_std]` and single-threaded (`alloc::rc`). Float math uses `libm`
+(transcendentals) and `ryu` (display). Compiled `.rlc` chunks are deflate-compressed via
+`miniz_oxide`.
 
 ## Quick look
 
 ```rl
-get println, len from std::io
-get pow, mod, factorial, fibonacci, is_prime from std::math
-get PI from std::math::consts
+get println from std::io
 
-fn collatz(int n) {
-    dec int steps = 0
-    while (n != 1) {
-        if (mod(n, 2) == 0) {
-            n = n / 2
-        } else {
-            n = n * 3 + 1
-        }
-        steps += 1
+fn fib(int n) {
+    if (n < 2) {
+        return n
     }
-    return steps
+    return fib(n - 1) + fib(n - 2)
 }
 
-println(factorial(10))    // 3628800
-println(fibonacci(15))    // 610
-println(is_prime(97))     // true
-println(collatz(27))      // 111
-
-dec float r = 5.0
-println(PI() * pow(r, 2.0))  // 78.53981633974483
+dec int total = 0
+dec int i = 0
+while (i <= 10) {
+    total += fib(i)
+    i += 1
+}
+println("sum of fib(0..10) = ", total)   // sum of fib(0..10) = 143
 ```
 
-## Installation
+RL syntax is newline-separated (no `;`), variables are declared with `dec`/`CONST`, and stdlib
+functions must be imported first via `get name from std::module`.
 
-### Via install script (recommended)
+## Embedding
 
-Prebuilt binaries are published for every [release](https://github.com/rl-lang/rl-lang/releases). The install script downloads the build you pick (or the latest stable) and puts it on your PATH.
+Add `rl-embed` to your application:
 
-**Linux / WSL** (installs to `$HOME/.local/bin`; set `RL_INSTALL_DIR` to override):
+```rust
+use rl_embed::{run, VmValue};
 
-```bash
-curl -fsSL https://raw.githubusercontent.com/rl-lang/rl-lang/main/install.sh -o install.sh
-bash install.sh
+let code = r#"
+    get println from std::io
+    println("hello, ", 2 + 3)
+"#;
+
+let (value, output) = run(code, "app.rl", None)?;
+assert_eq!(output, "hello, 5\n");
 ```
-
-**Android (Termux)** - works the same way on aarch64 devices (install script detects Termux and downloads the Android build):
-
-```bash
-curl -fsSL https://raw.githubusercontent.com/rl-lang/rl-lang/main/install.sh -o install.sh
-bash install.sh
-```
-
-Non-interactively (install the standard `rl` build of `v1.0.0`):
-
-```bash
-RL_VARIANT=rl bash install.sh v1.0.0
-```
-
-**Windows (PowerShell)** (installs to `%LOCALAPPDATA%\rl-lang\bin` and adds it to your user PATH - restart your terminal afterwards):
-
-```powershell
-Invoke-WebRequest https://raw.githubusercontent.com/rl-lang/rl-lang/main/install.ps1 -OutFile install.ps1
-.\install.ps1
-```
-
-Available builds include `rl` (treewalker + VM), `rlc` (VM-only), `rlp` (treewalker-only), and `rlsp` (language server). Debug variants are suffixed with `d` (e.g. `rld`).
-
-### From source
-
-```bash
-git clone https://github.com/rl-lang/rl-lang
-cd rl-lang/crates/rl-cli
-cargo build --release
-# binary at target/release/rl
-```
-
-### Via cargo install
-
-```bash
-cargo install rl-cli
-```
-
-### Via releases
-
-from [releases](https://github.com/rl-lang/rl-lang/releases) you can choose `nightly` builds or the `latest` build
-
-## Usage
-
-Firstly i highly suggest using the `docs` command
-```bash
-rl docs
-
-# for TUI mode
-rl docs --tui
-```
-
-for using the compiled `rl` binary
-```bash
-# to check available commands
-rl -h
-# or
-rl --help
-
-# to start a new project
-rl new example-project
-
-# in project root you can run it via
-rl dev
-# or run the file directly
-rl run src/main.rl
-```
-
-## Documentation
-
-Full language reference and stdlib documentation is available on the [wiki](https://rl-lang.github.io/the-book/).
-
-## Editor support
-
-### VS Code
-
-- Install the [rl-lang extension](https://github.com/rl-lang/vscode-rl) for syntax highlighting in `.rl` files.
-- Install the [rl-lang runner extension](https://github.com/rl-lang/vscode-rl-lang) to run and check files from the editor.
-- Install the [rl-lang LSP extension](https://github.com/rl-lang/vscode-rl-lsp) for diagnostics and hover.
-
-### Tree-sitter
-
-A Tree-sitter grammar is available at [rl-lang/tree-sitter-rl](https://github.com/rl-lang/tree-sitter-rl) for editors that support it (Neovim, Helix, Zed, etc.).
-
-## Benchmarks
-
-Criterion benchmarks live in `crates/rl-benches`. Run with:
-
-```bash
-cargo bench
-```
+The embedding binary must supply a global allocator and a panic handler; `print`/`println`
+write to a capture buffer the host drains via `take_output`. Seed `std::random` from your own
+entropy source via `seed_vm`.
 
 ## Development
 
 ```bash
-cargo test --all-features   # full test suite
-cargo clippy -- -D warnings # lints
-cargo bench                 # criterion benchmarks
+cargo test --workspace        # full test suite
+cargo clippy --workspace -- -D warnings   # lints
+# bare-metal gate (thumbv7em-none-eabihf):
+cargo check --workspace --exclude rl-tests --target thumbv7em-none-eabihf
 ```
-
-Feature flags:
-
-| Flag        | State              | Description  |
-| :---------: | :----------------: | :----------: |
-| `run`       | `Off` by default   | -            |
-| `eval`      | `Off` by default   | Deprecated alias for `treewalker`            |
-| `treewalker`| `Off` by default   | This flag for the `treewalker` backend (enabled in release builds)             |
-| `vm`        | `On` by default    | This flag for `vm` backend         |
-| `cranelift` | `Off` experimental | This flag for `cranelift` backend used for native compilations             |
-| `repl`      | `On` by default    | This flag for the interactive TUI shell `REPL`             |
-| `docs`      | `On` by default    | This flag for the `rl-docs` documentation tooling             |
-| `docs-tui`  | `On` by default    | This flag for the interactive TUI mode for browsing `rl-docs`             |
-| `debug`     | `Off` by default   | This flag for logging and debugging purposes             |
-| `lsp`       | `Off` by default   | This flag for language server protocol used by IDEs and other editors             | 
-
-## Contributors
-
-<!--
-  Deprecation notice:
-    The all contributors bot integration is deprecated for this repo
-    migrated contributors showcase to contrib.rocks
--->
-
-<a href="https://github.com/rl-lang/rl-lang/graphs">
-  <img src="https://contrib.rocks/image?repo=rl-lang/rl-lang" />
-</a>
-<!-- made with contrib.rocks (many thanks :D) -->
 
 ## License
 
-Licensed under either of [MIT](LICENSE-MIT.md) or [Apache 2.0](APACHE-LICENSE) at your option.
+Licensed under either of [MIT](LICENSE-MIT.md) or [Apache 2.0](LICENSE-APACHE.md) at your option.

@@ -5,6 +5,7 @@ Closes #
 
 ## Checklist
 - [ ] branched off `dev`
-- [ ] `cargo test --all-features` passes
-- [ ] `cargo clippy -- -D warnings` passes
+- [ ] `cargo test --workspace` passes
+- [ ] `cargo clippy --workspace -- -D warnings` passes
+- [ ] `cargo check --workspace --exclude rl-tests --target thumbv7em-none-eabihf` passes (bare-metal gate)
 - [ ] docs updated if needed

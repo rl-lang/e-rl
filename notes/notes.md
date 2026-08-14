@@ -14,14 +14,6 @@ will have random stuff that should be tracked
     - [x] `todo`
   - [x] finish documentation
   - [ ] finish tests
-- [ ] finish `net` std module
-  - [x] finish implementation
-  - [x] finish documentation
-  - [ ] finish tests
-- [ ] finish `http` std module
-  - [ ] finish implementation
-  - [ ] finish documentation
-  - [ ] finish tests
 - [ ] refactor the following std modules
    - [ ] `str`
       - [ ] logic
@@ -35,23 +27,11 @@ will have random stuff that should be tracked
       - [ ] logic
       - [ ] tests
       - [ ] docs
-   - [ ] `process`
-      - [ ] logic
-      - [ ] tests
-      - [ ] docs
-   - [ ] `path`
-      - [ ] logic
-      - [ ] tests
-      - [ ] docs
    - [ ] `math`
       - [ ] logic
       - [ ] tests
       - [ ] docs
    - [ ] `io`
-      - [ ] logic
-      - [ ] tests
-      - [ ] docs
-   - [ ] `fs`
       - [ ] logic
       - [ ] tests
       - [ ] docs
@@ -86,10 +66,9 @@ will have random stuff that should be tracked
 - [ ] `value` generic value type that should hold any other type
 
 ## VM
-- [ ] think how it should look
-- [ ] design basic vm compiler and runner
-- [ ] redesign stdlib to work with vm and interpreter
-- [ ] import the rest of interpreter logic
+- [x] design basic vm compiler and runner
+- [x] rewrite the stdlib to be runtime-agnostic over `Runtime`
+- [x] bytecode serialization (deflate via `miniz_oxide`)
 
 ## New Mechanics
 - [ ] macros

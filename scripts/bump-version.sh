@@ -34,4 +34,4 @@ sed -i -E '/^\[workspace.dependencies\]/,/^\[/{
     }
 }' "$M"
 
-echo "rl-lang $cur -> $next"
+echo "RL $cur -> $next"

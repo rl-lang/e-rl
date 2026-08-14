@@ -1,6 +1,6 @@
 ---
 name: Bug report
-about: Report a bug in rl-lang
+about: Report a bug in the RL embedded scripting engine
 ---
 
 **Describe the bug**
@@ -15,6 +15,4 @@ about: Report a bug in rl-lang
 **Actual behavior**
 
 **Version**
-```bash
-rl --version
-```
+Crate versions from `crates/*/Cargo.toml` or the `[workspace.package]` version in `Cargo.toml`.

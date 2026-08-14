@@ -1,56 +1,67 @@
-# Contributing to rl-lang
+# Contributing to RL
 
 Thanks for your interest in contributing!
 
 ## Getting started
 
 ```bash
-git clone https://github.com/MohamedGonem/rl-lang
-cd rl-lang
+git clone <your-fork-url> rl
+cd rl
 cargo build
 ```
 
 ## Before submitting a PR
 
 ```bash
-cargo test --all-features   # make sure all tests pass
-cargo clippy -- -D warnings # no lint warnings
+cargo test --workspace                       # make sure all tests pass
+cargo clippy --workspace -- -D warnings      # no lint warnings
+cargo check --workspace --exclude rl-tests --target thumbv7em-none-eabihf   # bare-metal gate
 ```
 
 - PRs must be up to date with the `dev` branch - always branch off `dev` and rebase before submitting
+- Every crate in the workspace is `#![no_std]` and single-threaded (`alloc::rc`). New code must not
+  pull in `std`, OS facilities, threads, or global state.
 
 ## What to work on
 
-Check the [issues](https://github.com/MohamedGonem/rl-lang/issues) page for open bugs and feature requests, or the [roadmap](https://github.com/MohamedGonem/rl-lang/wiki/Roadmap) for planned work.
+Open an issue on this repository for open bugs and feature requests.
 
 ## Versioning & releases
 
-rl-lang follows SemVer (`vMAJOR.MINOR.PATCH`, with `-alpha`/`-beta`/`-rc` pre-releases). See [VERSIONING.md](VERSIONING.md) for the full breakdown of when to use each, and how the release/Discord-announcement workflow classifies a pushed tag automatically. Contributors don't need to cut releases themselves, but PR descriptions that change public behavior should note whether the change is a breaking (major), additive (minor), or fix-only (patch) change so maintainers tag it correctly.
+This project follows SemVer (`vMAJOR.MINOR.PATCH`, with `-alpha`/`-beta`/`-rc` pre-releases). See
+[VERSIONING.md](VERSIONING.md) for the full breakdown of when to use each. PR descriptions that
+change public behavior should note whether the change is a breaking (major), additive (minor), or
+fix-only (patch) change so maintainers tag it correctly.
 
 ## Guidelines
 
 - Keep PRs focused - one fix or feature per PR
-- Add tests for new behavior where possible
+- Add tests for new behavior where possible (integration tests live in `crates/rl-tests/tests/`)
 - Follow the existing code style
 - Update docs if you change language behavior or add stdlib functions
 
 ## Adding a stdlib function
 
-Registering a new `std::<module>::<function>` now touches five files across three crates -- don't stop at the implementation, or the function will run but won't type-check, autocomplete, or show up in `rl docs`.
+A stdlib function is written once, generic over `rl_std_core::Runtime`, and lowered by the
+`#[native_fn]` proc macro into a thin function-pointer handle plus its signature. Adding one
+touches two places:
 
-1. **Implementation** -- add `crates/rl-interpreter/src/stdlib/<module>/<function>.rs` (one file per function, following the existing modules like `math/`, `string/`, `bitwise/`).
-2. **Register the function** -- wire it up in `crates/rl-interpreter/src/stdlib/<module>/mod.rs` with `.with_function("name", <function>::std_<function>)`.
-3. **Register the name for the checker** -- add `"name"` to that module's list in `crates/rl-commons/src/keywords.rs`. This is what powers `std::<module>::<function>` resolution, single-name shorthand resolution, and "did you mean?" suggestions in `rl-checker` -- skip it and the checker will report the function as undefined even though it runs fine.
-4. **Doc entry** -- add `crates/rl-docs/src/entries/stdlib/<module>/<function>.rs` describing the function (signature, description, example).
-5. **Register the doc entry** -- add it to that module's array in `crates/rl-docs/src/entries/stdlib/<module>/mod.rs` so it shows up in `rl docs` and the LSP hover.
+1. **Implementation** - add the function to the right module in `crates/rl-std/src/` (one file per
+   module: `array.rs`, `bitwise.rs`, ...), annotated with `#[native_fn]`. The macro generates
+   `mod::handles::<R>()` and `mod::signature()` builders automatically.
+2. **Register the module** - if the module isn't registered yet, add it to the module tree in
+   `crates/rl-vm/src/stdlib/mod.rs` (`root()`) with
+   `Module::from_std("<name>", rl_std::<module>::handles::<VmRuntime>())`.
 
-If you're adding a brand-new module (not just a new function in an existing one), you'll also need to register the module itself in `crates/rl-interpreter/src/stdlib/mod.rs`, `crates/rl-commons/src/lib.rs` (`stdlib_names()`), and `crates/rl-docs/src/entries/mod.rs` (`stdlib_entries()`).
-
-The bytecode VM (`rl-vm`) has its own, much smaller stdlib (`crates/rl-vm/src/stdlib/`) that only covers `io` so far -- you generally don't need to touch it unless you're specifically porting a function to the VM backend.
+Only pure-computation modules belong in the embedded stdlib. Anything that needs a filesystem,
+network, wall-clock time, stdin/stderr, or threads is a host concern and belongs in the embedding
+application instead.
 
 ## AI usage
 
-Using AI tools to help write a contribution is fine, but you're expected to understand, test, and take responsibility for anything you submit. See [AI_POLICY.md](AI_POLICY.md) for what's and isn't okay - it covers unreviewed AI output, hallucinated APIs, and mass-generated issues/PRs specifically.
+Using AI tools to help write a contribution is fine, but you're expected to understand, test, and
+take responsibility for anything you submit. See [AI_POLICY.md](AI_POLICY.md) for what's and isn't
+okay.
 
 ## Questions
 
