@@ -2,14 +2,14 @@
 
 macro_rules! vok {
     ($e:expr) => {
-        crate::values::VmValue::Ok(Box::new($e))
+        crate::values::VmValue::Ok(::alloc::boxed::Box::new($e))
     };
 }
 pub(crate) use vok;
 
 macro_rules! verr {
     ($e:expr) => {
-        crate::values::VmValue::Err(Box::new($e))
+        crate::values::VmValue::Err(::alloc::boxed::Box::new($e))
     };
 }
 pub(crate) use verr;
@@ -37,7 +37,7 @@ pub(crate) use vf;
 
 macro_rules! vs {
     ($e:expr) => {
-        crate::values::VmValue::Str(std::rc::Rc::from($e.as_str()))
+        crate::values::VmValue::Str(alloc::rc::Rc::from($e))
     };
 }
 pub(crate) use vs;

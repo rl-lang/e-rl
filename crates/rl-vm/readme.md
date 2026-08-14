@@ -1,8 +1,8 @@
 # rl-vm
 
-> Bytecode virtual machine for the rl-lang programming language
+> Bytecode virtual machine for the embedded RL language
 
-Part of the [rl-lang](https://github.com/rl-lang/rl-lang) workspace. This is the bytecode execution engine of the toolchain - it compiles the AST to bytecode and runs it on a stack-based VM, alongside the tree-walking `rl-interpreter`.
+Part of the **RL embedded scripting engine** - the `#![no_std]`-only hard fork of the rl-lang toolchain built around the bytecode VM. This crate is the execution engine: it compiles the resolved AST to bytecode and runs it on a stack-based VM.
 
 ## Pipeline
 
@@ -15,7 +15,7 @@ Vec<Statement> -> Compiler::compile() -> Chunk -> Vm::run() / Vm::run_and_return
 | Module | Contents |
 |---|---|
 | `compiler` | `Compiler` - compiles a resolved AST into a `Chunk` of bytecode |
-| `bytecode` | `serialize_chunk` / `deserialize_chunk` - persisting compiled chunks to disk (used by `rl-tooling`'s package/embed step) |
+| `bytecode` | `serialize_chunk` / `deserialize_chunk` - persisting compiled chunks (deflate-compressed) |
 | `chunk` | `Chunk` and `OpCode` - the bytecode representation |
 | `vm_logic` | `Vm` - the stack-based bytecode interpreter, plus `VmError` |
 | `native` | `Module` and `NativeFn` - native function binding for the VM |
@@ -24,7 +24,7 @@ Vec<Statement> -> Compiler::compile() -> Chunk -> Vm::run() / Vm::run_and_return
 
 ## Dependencies
 
-Builds on `rl-ast`, `rl-lexer`, and `zstd` (for compressed bytecode serialization).
+Builds on `rl-ast`, `rl-lexer`, `rl-resolver`, and `miniz_oxide` (for deflate-compressed bytecode serialization).
 
 ## Usage
 
@@ -39,8 +39,6 @@ use rl_vm::{Compiler, Vm};
 let chunk = Compiler::new(&ast).compile(&statements)?;
 let result = Vm::new().run_and_return(&chunk)?;
 ```
-
-> **Note:** the VM is the default execution backend of `rl-cli` (the `vm` feature is on by default) and is a stable drop-in for the tree-walking interpreter.
 
 ## License
 

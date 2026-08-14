@@ -1,3 +1,4 @@
+use alloc::string::ToString;
 use crate::{Vm, stdlib::macros::vs, values::VmValue};
 
 pub fn func(_: &mut Vm) -> VmValue {

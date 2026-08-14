@@ -1,4 +1,7 @@
-use std::rc::Rc;
+use alloc::string::String;
+use alloc::rc::Rc;
+use alloc::string::ToString;
+use alloc::vec::Vec;
 
 use crate::chunk::{Chunk, OpCode};
 use crate::native::Module;
@@ -17,8 +20,7 @@ use rl_utils::span::Span;
 ///
 /// This is a plain alias over the shared [`Error`] type used everywhere
 /// else in the pipeline (lexer/parser/checker/interpreter), so `rl-vm`
-/// diagnostics get the same ariadne-rendered source snippets instead of
-/// the bare-string errors it used to produce.
+/// diagnostics carry the same source-location rendering.
 pub type CompileError = Error;
 
 enum ContinueTarget {
@@ -119,16 +121,16 @@ impl<'a> Compiler<'a> {
         }
     }
 
-    /// Attaches the original source text so compile errors can render
-    /// ariadne source snippets instead of a bare message.
+    /// Attaches the original source text so compile errors can resolve a
+    /// `file:line:col` location instead of a bare message.
     pub fn with_source_file(mut self, source: SourceFile) -> Self {
         self.source = Some(source);
         self
     }
 
     /// Replaces the stdlib module tree this compiler resolves imports and
-    /// `std::` calls against. The REPL passes the previous session's module
-    /// here so `get x from std::io` bindings survive across inputs (the
+    /// `std::` calls against. The host passes the previous session's module
+    /// here so `get x from std::io` bindings survive across runs (the
     /// compiler mutates its own `stdlib` in place when it compiles an
     /// [`StatementKind::Import`]).
     pub fn with_stdlib(mut self, stdlib: Module) -> Self {
@@ -137,13 +139,13 @@ impl<'a> Compiler<'a> {
     }
 
     /// The stdlib module tree this compiler uses, after any imports it
-    /// compiled have been folded in. Used by the REPL to persist imports
-    /// across inputs.
+    /// compiled have been folded in. Used by the host to persist imports
+    /// across runs.
     pub fn stdlib(&self) -> &Module {
         &self.stdlib
     }
 
-    /// Seeds the global slot counter, so a REPL input can continue assigning
+    /// Seeds the global slot counter, so a host can continue assigning
     /// globals from where the persistent resolver's global scope left off.
     pub fn with_global_slot_base(mut self, base: u16) -> Self {
         self.next_slot = base;
@@ -194,7 +196,7 @@ impl<'a> Compiler<'a> {
 
         let end_span = statements.last().map(|s| s.span).unwrap_or_default();
         self.chunk.write_op(OpCode::Return, end_span);
-        Ok(std::mem::take(&mut self.chunk))
+        Ok(core::mem::take(&mut self.chunk))
     }
 
     /// Scans the program for an explicit `!#[entry]` (falling back to a bare

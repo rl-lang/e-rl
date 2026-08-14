@@ -1,3 +1,8 @@
+#![no_std]
+
+#[macro_use]
+extern crate alloc;
+
 pub mod bytecode;
 pub mod chunk;
 pub mod compiler;

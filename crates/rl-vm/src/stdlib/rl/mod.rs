@@ -1,10 +1,9 @@
 //! `std::rl`
 
-mod check;
-pub mod common;
 mod eval;
 mod eval_isolated;
 mod lex;
+pub mod common;
 mod rl_version;
 mod source_name;
 
@@ -15,7 +14,6 @@ pub fn module() -> Module {
         .with_function("lex", lex::func)
         .with_function("eval", eval::func)
         .with_function("eval_isolated", eval_isolated::func)
-        .with_function("check", check::func)
         .with_function("rl_version", rl_version::func)
         .with_function("source_name", source_name::func)
 }

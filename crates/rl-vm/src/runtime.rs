@@ -6,14 +6,18 @@
 //! returns. Compound-value type annotations are ignored (the VM does not track
 //! `items_type`).
 
+use alloc::boxed::Box;
+use alloc::rc::Rc;
+use alloc::string::{String, ToString};
+use alloc::vec::Vec;
+use core::cell::RefCell;
+use hashbrown::{HashMap, HashSet};
+
 use crate::values::{VmMapKey, VmValue};
 use crate::vm_logic::Vm;
 use rl_ast::statements::TypeAnnotation;
 use rl_std_core::Runtime;
 use rl_utils::errors::Error;
-use std::cell::RefCell;
-use std::collections::{HashMap, HashSet};
-use std::rc::Rc;
 
 /// Zero-sized marker binding the shared stdlib to the VM.
 pub struct VmRuntime;
@@ -441,107 +445,5 @@ impl Runtime for VmRuntime {
     }
     fn make_handle(kind: rl_ast::statements::HandleKind, id: u64) -> Self::Value {
         VmValue::Handle { kind, id }
-    }
-}
-
-impl rl_std::net::NetStore for VmRuntime {
-    fn net_insert(cx: &mut Vm, h: rl_std::net::NetHandle) -> u64 {
-        let id = cx.net_next_handle;
-        cx.net_next_handle += 1;
-        cx.net_handles.insert(id, h);
-        id
-    }
-    fn net_get(cx: &Vm, id: u64) -> Option<&rl_std::net::NetHandle> {
-        cx.net_handles.get(&id)
-    }
-    fn net_get_mut(cx: &mut Vm, id: u64) -> Option<&mut rl_std::net::NetHandle> {
-        cx.net_handles.get_mut(&id)
-    }
-    fn net_remove(cx: &mut Vm, id: u64) -> Option<rl_std::net::NetHandle> {
-        cx.net_handles.remove(&id)
-    }
-}
-
-impl rl_std::c::CStore for VmRuntime {
-    fn c_insert(cx: &mut Vm, h: rl_std::c::CHandle) -> u64 {
-        let id = cx.c_next_handle;
-        cx.c_next_handle += 1;
-        cx.c_handles.insert(id, h);
-        id
-    }
-    fn c_get(cx: &Vm, id: u64) -> Option<&rl_std::c::CHandle> {
-        cx.c_handles.get(&id)
-    }
-    fn c_get_mut(cx: &mut Vm, id: u64) -> Option<&mut rl_std::c::CHandle> {
-        cx.c_handles.get_mut(&id)
-    }
-    fn c_remove(cx: &mut Vm, id: u64) -> Option<rl_std::c::CHandle> {
-        cx.c_handles.remove(&id)
-    }
-}
-
-impl rl_std::http::HttpStore for VmRuntime {
-    fn http_insert(cx: &mut Vm, h: rl_std::http::HttpHandle) -> u64 {
-        let id = cx.http_next_handle;
-        cx.http_next_handle += 1;
-        cx.http_handles.insert(id, h);
-        id
-    }
-    fn http_get(cx: &Vm, id: u64) -> Option<&rl_std::http::HttpHandle> {
-        cx.http_handles.get(&id)
-    }
-    fn http_get_mut(cx: &mut Vm, id: u64) -> Option<&mut rl_std::http::HttpHandle> {
-        cx.http_handles.get_mut(&id)
-    }
-    fn http_remove(cx: &mut Vm, id: u64) -> Option<rl_std::http::HttpHandle> {
-        cx.http_handles.remove(&id)
-    }
-}
-
-impl rl_std::audio::AudioStore for VmRuntime {
-    fn audio_insert(cx: &mut Vm, h: rl_std::audio::AudioHandle) -> u64 {
-        let id = cx.audio_next_handle;
-        cx.audio_next_handle += 1;
-        cx.audio_handles.insert(id, h);
-        id
-    }
-    fn audio_get(cx: &Vm, id: u64) -> Option<&rl_std::audio::AudioHandle> {
-        cx.audio_handles.get(&id)
-    }
-    fn audio_get_mut(cx: &mut Vm, id: u64) -> Option<&mut rl_std::audio::AudioHandle> {
-        cx.audio_handles.get_mut(&id)
-    }
-    fn audio_remove(cx: &mut Vm, id: u64) -> Option<rl_std::audio::AudioHandle> {
-        cx.audio_handles.remove(&id)
-    }
-    fn audio_output_device(cx: &mut Vm) -> &mut Option<String> {
-        &mut cx.audio_output_device
-    }
-    fn audio_master_volume(cx: &mut Vm) -> &mut f32 {
-        &mut cx.audio_master_volume
-    }
-    fn audio_handles_values<'a>(
-        cx: &'a Vm,
-    ) -> Box<dyn Iterator<Item = &'a rl_std::audio::AudioHandle> + 'a> {
-        Box::new(cx.audio_handles.values())
-    }
-}
-
-impl rl_std::gui::GuiStore for VmRuntime {
-    fn gui_handles(
-        cx: &mut Vm,
-    ) -> &mut std::collections::HashMap<u64, rl_std::gui::GuiHandle<VmValue>> {
-        &mut cx.gui_handles
-    }
-    fn gui_handles_ref(
-        cx: &Vm,
-    ) -> &std::collections::HashMap<u64, rl_std::gui::GuiHandle<VmValue>> {
-        &cx.gui_handles
-    }
-    fn gui_next_handle(cx: &mut Vm) -> &mut u64 {
-        &mut cx.gui_next_handle
-    }
-    fn gui_quit_requested(cx: &mut Vm) -> &mut bool {
-        &mut cx.gui_quit_requested
     }
 }

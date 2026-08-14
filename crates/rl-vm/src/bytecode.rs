@@ -5,7 +5,7 @@
 //!
 //!
 //! [ magic: b"RLZ3" ]
-//! [ zstd-compressed payload ]
+//! [ miniz_oxide-deflate-compressed payload ]
 //!
 //!
 //! The payload, once decompressed, is the RLC3 format:
@@ -50,7 +50,7 @@
 //! just the byte offset where each source line starts, so runtime errors
 //! raised from this file can report a `file:line:col` location without
 //! the file embedding (or leaking) the original source text. It's
-//! optional - `rl compile`/`rl package --vm` always include one when a
+//! optional - serializers always include one when a
 //! source file was available, but the format tolerates its absence:
 //!
 //!
@@ -71,15 +71,29 @@
 //! encoded as ULEB128/zigzag-LEB128 varints rather than fixed-width
 //! fields, since most values in practice are small.
 //!
-//! The outer zstd wrapper is a load-time-only cost: decompression
+//! The outer deflate wrapper is a load-time-only cost: decompression
 //! happens once, before the chunk is handed to the VM, so it has no
 //! effect on bytecode execution speed. It trades a small amount of
-//! compress/decompress time for smaller files on disk.
+//! compress/decompress time for smaller files on disk. `miniz_oxide` is
+//! the same DEFLATE codec that backs std's `gzip`, chosen because it is
+//! `no_std` (and much smaller than a zstd binding).
+//!
+//! # Format note
+//!
+//! The `RLZ3` magic and the `miniz_oxide::deflate::compress_to_vec` /
+//! `miniz_oxide::inflate::decompress_to_vec` stream format are compatible
+//! with the original zstd-based files *only in spirit*: a zstd-compressed
+//! `.rlc` produced by an older rl cannot be read by this build (and vice
+//! versa), because the compression codec differs. The uncompressed payload
+//! format is unchanged.
 
-use std::cell::RefCell;
-use std::collections::{HashMap, HashSet};
-use std::fmt::{Display, Formatter};
-use std::rc::Rc;
+use alloc::boxed::Box;
+use alloc::rc::Rc;
+use alloc::string::{String, ToString};
+use alloc::vec::Vec;
+use core::cell::RefCell;
+use core::fmt::{Display, Formatter};
+use hashbrown::{HashMap, HashSet};
 
 use crate::chunk::Chunk;
 use crate::native::Module;
@@ -90,23 +104,22 @@ use rl_utils::span::Span;
 
 const MAGIC: &[u8; 4] = b"RLZ3";
 
-/// zstd compression level. 1 = fastest/worst ratio, 22 = slowest/best
-/// ratio. 19 is "high" without being the extreme, slow tail of the
-/// range - reasonable for a one-time compile-time cost.
-const ZSTD_LEVEL: i32 = 19;
+/// deflate compression level (0 = fastest, 9 = best ratio). 6 is the same
+/// default std's `gzip` uses - reasonable for a one-time compile-time cost.
+const DEFLATE_LEVEL: u8 = 6;
 
 #[derive(Debug)]
 pub struct BytecodeError(pub String);
 
 impl Display for BytecodeError {
-    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+    fn fmt(&self, f: &mut Formatter<'_>) -> core::fmt::Result {
         write!(f, "{}", self.0)
     }
 }
 
 /// Serializes chunk into the .rlc binary format: an RLC2 payload
 /// (string pool + chunk + line index, all varint/RLE-encoded) wrapped
-/// in zstd compression.
+/// in deflate compression.
 ///
 /// `line_index` should be `Some` whenever the chunk was compiled from a
 /// real source file, so runtime errors from this bytecode can still
@@ -116,8 +129,7 @@ impl Display for BytecodeError {
 pub fn serialize_chunk(chunk: &Chunk, line_index: Option<&LineIndex>) -> Vec<u8> {
     let payload = serialize_payload(chunk, line_index);
 
-    let compressed = zstd::encode_all(&payload[..], ZSTD_LEVEL)
-        .expect("compressing an in-memory buffer cannot fail");
+    let compressed = miniz_oxide::deflate::compress_to_vec(&payload, DEFLATE_LEVEL);
 
     let mut out = Vec::with_capacity(4 + compressed.len());
     out.extend_from_slice(MAGIC);
@@ -141,7 +153,7 @@ pub fn deserialize_chunk(
         ));
     }
 
-    let payload = zstd::decode_all(&bytes[4..])
+    let payload = miniz_oxide::inflate::decompress_to_vec(&bytes[4..])
         .map_err(|e| BytecodeError(format!("failed to decompress .rlc file: {e}")))?;
 
     deserialize_payload(&payload, stdlib)
@@ -150,7 +162,7 @@ pub fn deserialize_chunk(
 // ---- RLC2 payload (pre-compression) ----
 
 /// Encodes chunk as an uncompressed RLC2 payload: string pool
-/// followed by the chunk itself. This is what gets zstd-compressed
+/// followed by the chunk itself. This is what gets deflate-compressed
 /// by [serialize_chunk].
 fn serialize_payload(chunk: &Chunk, line_index: Option<&LineIndex>) -> Vec<u8> {
     // Pass 1: walk the chunk (and every nested function chunk) to

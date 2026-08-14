@@ -1,3 +1,6 @@
+use alloc::string::{String, ToString};
+use alloc::vec::Vec;
+use alloc::boxed::Box;
 use crate::values::VmValue;
 use rl_ast::statements::HandleKind;
 use rl_utils::{
@@ -6,7 +9,7 @@ use rl_utils::{
 };
 
 // Re-exported so mirrored stdlib files can import the value-construction
-// macros from either `common` (as in `rl-interpreter`) or `macros`.
+// macros from `common` or `macros`.
 pub(crate) use crate::stdlib::macros::{try_fn, vb, vby, verr, vi, vnl, vok, vs};
 
 pub fn check_arity_range(

@@ -1,14 +1,19 @@
 //! The VM's native function binding system - [`Module`], [`NativeFn`], and the
 //! [`IntoNativeFn`] / [`FromValue`] / [`IntoValue`] trait machinery.
 //!
-//! This mirrors `rl-interpreter`'s `native.rs`, scoped down to what `VmValue`
-//! currently supports: no array/tuple/map/error/ok variants yet (so no
-//! `Vec<T>` impls). Errors built in here (arity mismatches, `FromValue`
-//! conversions) have no access to a `Span` - this generic machinery runs
-//! before the call site is known - so they're built with a dummy span via
+//! This is a scoped-down port of the original toolchain's `native.rs`,
+//! matching what `VmValue` currently supports: no array/tuple/map/error/ok
+//! variants yet (so no `Vec<T>` impls). Errors built in here (arity mismatches,
+//! `FromValue` conversions) have no access to a `Span` - this generic machinery
+//! runs before the call site is known - so they're built with a dummy span via
 //! [`rt_err`], then re-anchored at the actual call site by `Vm::annotate`
 //! the moment they rejoin the main dispatch loop (see the `OpCode::Call`
 //! handler in `vm_logic.rs`).
+
+use alloc::rc::Rc;
+use alloc::string::{String, ToString};
+use alloc::vec::Vec;
+use hashbrown::HashMap;
 
 use crate::runtime::VmRuntime;
 use crate::values::{VmNative, VmNativeFn, VmValue};
@@ -16,8 +21,6 @@ use crate::vm_logic::{Vm, VmError};
 use rl_std_core::NativeHandle;
 use rl_utils::errors::{Error, Reason};
 use rl_utils::span::Span;
-use std::collections::HashMap;
-use std::rc::Rc;
 
 /// Builds a runtime error with no span/source context yet; callers further
 /// up the stack re-anchor it once the call site is known (see module docs).
@@ -376,7 +379,7 @@ where
 }
 
 /// Marker type for fallible native functions (returning `Result<R, VmError>`).
-pub struct Fallible<T>(std::marker::PhantomData<T>);
+pub struct Fallible<T>(core::marker::PhantomData<T>);
 
 macro_rules! impl_into_native_fn {
     ($count:literal, $(($ty:ident, $var:ident)),+) => {

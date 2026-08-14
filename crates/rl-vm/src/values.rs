@@ -1,7 +1,10 @@
-use std::cell::RefCell;
-use std::collections::{HashMap, HashSet};
-use std::fmt;
-use std::rc::Rc;
+use alloc::boxed::Box;
+use alloc::rc::Rc;
+use alloc::string::String;
+use alloc::vec::Vec;
+use core::cell::RefCell;
+use core::fmt;
+use hashbrown::{HashMap, HashSet};
 
 use rl_ast::statements::HandleKind;
 
@@ -164,8 +167,8 @@ impl fmt::Display for VmValue {
             VmValue::BSByte(b) => write!(f, "{}", b),
             VmValue::Byte(b) => write!(f, "{}", b),
             VmValue::SByte(b) => write!(f, "{}", b),
-            VmValue::Float(fl) => write!(f, "{}", fl),
-            VmValue::SFloat(fl) => write!(f, "{}", fl),
+            VmValue::Float(fl) => f.write_str(ryu::Buffer::new().format_finite(*fl)),
+            VmValue::SFloat(fl) => f.write_str(ryu::Buffer::new().format_finite(*fl)),
             VmValue::Bool(b) => write!(f, "{}", b),
             VmValue::Char(c) => write!(f, "{}", c),
             VmValue::Str(s) => write!(f, "{}", s),

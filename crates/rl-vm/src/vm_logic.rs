@@ -1,11 +1,13 @@
-use std::cell::RefCell;
-use std::collections::{HashMap, HashSet};
-use std::rc::Rc;
+use alloc::boxed::Box;
+use alloc::rc::Rc;
+use alloc::string::{String, ToString};
+use alloc::vec::Vec;
+use core::cell::RefCell;
+use hashbrown::{HashMap, HashSet};
 
 use crate::VmNative;
 use crate::chunk::{Chunk, OpCode};
 use crate::values::{RecordFields, VmFunction, VmMapKey, VmValue};
-use rl_std::gui::GuiHandle;
 use rl_utils::errors::{Error, Reason};
 use rl_utils::line_index::LineIndex;
 use rl_utils::source::SourceFile;
@@ -14,8 +16,8 @@ use rl_utils::span::Span;
 /// Errors raised while executing a compiled [`Chunk`].
 ///
 /// A plain alias over the shared [`Error`] type (see `rl-vm::compiler::CompileError`),
-/// so runtime errors get the same ariadne-rendered source snippets as
-/// everywhere else in the pipeline, anchored at the currently executing
+/// so runtime errors carry the same source-location rendering as everywhere
+/// else in the pipeline, anchored at the currently executing
 /// instruction's [`Span`].
 pub type VmError = Error;
 
@@ -101,7 +103,8 @@ pub struct Vm {
     /// with the dispatch loop's `cur_chunk` local so [`Vm::cur_span`] can
     /// resolve `current_ip`. `null` when no chunk is running.
     current_chunk: *const Chunk,
-    /// Original source text, so runtime errors can render ariadne snippets.
+    /// Original source text, so runtime errors can resolve a `file:line:col`
+    /// location against it.
     source: Option<SourceFile>,
     /// Byte-offset -> line/col table, used when `source` is `None` (e.g.
     /// running compiled `.rlc` bytecode, which embeds this instead of the
@@ -125,47 +128,15 @@ pub struct Vm {
     /// consulted by `OpCode::LookupMethod` after the stdlib fallback -
     /// mirroring the interpreter's `fn_names`.
     user_methods: HashMap<String, Rc<VmFunction>>,
-    /// Side-table of native C-interop resources (`std::c`), keyed by handle
-    /// id. `pub(crate)` (unlike every field above) because, unlike every
-    /// other native function so far, `std::c`'s functions need persistent
-    /// state across calls, not just their own arguments - see `stdlib::c`.
-    pub(crate) c_handles: HashMap<u64, rl_std::c::CHandle>,
-    /// Next handle id to hand out for `std::c` resources; only ever increments.
-    pub(crate) c_next_handle: u64,
-    /// Side-table of native audio-playback resources (`std::audio`), keyed by handle id.
-    pub(crate) audio_handles: HashMap<u64, rl_std::audio::AudioHandle>,
-    /// Next handle id to hand out for `std::audio` resources; only ever increments.
-    pub(crate) audio_next_handle: u64,
-    /// Output device selected via `std::audio::set_output_device`, if any;
-    /// `None` means the system default device.
-    pub(crate) audio_output_device: Option<String>,
-    /// Global volume scalar set via `std::audio::set_master_volume`, applied
-    /// on top of each sound's own `sound_set_volume` value. Defaults to `1.0`.
-    pub(crate) audio_master_volume: f32,
-    /// Side-table of native GUI resources (`std::gui`), keyed by handle id.
-    pub(crate) gui_handles: HashMap<u64, GuiHandle<VmValue>>,
-    /// Next handle id to hand out for `std::gui` resources; only ever increments.
-    pub(crate) gui_next_handle: u64,
-    /// Set by `gui_quit`; checked by `gui_run`'s frame loop after that frame's
-    /// click callbacks have run, so the window closes on the next frame instead
-    /// of being torn down mid-callback.
-    pub(crate) gui_quit_requested: bool,
-    /// Side-table of native TCP/UDP resources (`std::net`), keyed by handle id.
-    pub(crate) net_handles: HashMap<u64, rl_std::net::NetHandle>,
-    /// Next handle id to hand out for `std::net` resources; only ever increments.
-    pub(crate) net_next_handle: u64,
-    /// Side-table of native HTTP resources (`std::http`), keyed by handle id.
-    pub(crate) http_handles: HashMap<u64, rl_std::http::HttpHandle>,
-    /// Next handle id to hand out for `std::http` resources; only ever increments.
-    pub(crate) http_next_handle: u64,
-    /// PRNG state for `std::random`, seeded from the system clock at startup.
+    /// PRNG state for `std::random`. The default seed is a fixed constant
+    /// (there is no clock/entropy source on bare metal); the host can supply
+    /// its own entropy via [`rl_std_core::Xoshiro256::with_seed`].
     pub(crate) rng: rl_std_core::Xoshiro256,
-    /// Number of leading `std::env::args()` entries to skip when reporting
-    /// `std::process::args()` (defaults to 1 - the program name itself).
+    /// Number of leading host argument entries to skip when reporting host
+    /// arguments (defaults to 1 - the program name itself).
     pub user_args_offset: usize,
     /// When set, `std::io::print`/`std::io::println` append into this buffer
-    /// instead of writing to stdout. The REPL sets this per-input so `print`
-    /// output lands in the output area instead of cluttering the terminal.
+    /// instead of writing to a host console.
     pub output_buffer: Option<String>,
 }
 
@@ -177,33 +148,20 @@ impl Vm {
             locals: Vec::new(),
             scope_starts: Vec::new(),
             current_ip: 0,
-            current_chunk: std::ptr::null(),
+            current_chunk: core::ptr::null(),
             source: None,
             line_index: None,
             impl_methods: HashMap::new(),
             stdlib_methods: HashMap::new(),
             user_methods: HashMap::new(),
-            c_handles: HashMap::new(),
-            c_next_handle: 1,
-            audio_handles: HashMap::new(),
-            audio_next_handle: 1,
-            audio_output_device: None,
-            audio_master_volume: 1.0,
-            gui_handles: HashMap::new(),
-            gui_next_handle: 1,
-            gui_quit_requested: false,
-            net_handles: HashMap::new(),
-            net_next_handle: 1,
-            http_handles: HashMap::new(),
-            http_next_handle: 1,
             rng: Default::default(),
             user_args_offset: 1,
             output_buffer: None,
         }
     }
 
-    /// Attaches the original source text so runtime errors can render
-    /// ariadne source snippets instead of a bare message.
+    /// Attaches the original source text so runtime errors can resolve a
+    /// `file:line:col` location instead of a bare message.
     pub fn with_source_file(mut self, source: SourceFile) -> Self {
         self.source = Some(source);
         self
@@ -211,7 +169,7 @@ impl Vm {
 
     /// Sets the source text on an already-constructed [`Vm`] (the builder
     /// form [`Vm::with_source_file`] consumes `self`, which doesn't work for
-    /// the REPL's persistent `Vm`). Runtime errors render ariadne snippets
+    /// a persistent `Vm`). Runtime errors resolve locations
     /// against this text.
     pub fn set_source_file(&mut self, source: SourceFile) {
         self.source = Some(source);
@@ -219,22 +177,30 @@ impl Vm {
 
     /// Clears per-execution transient state - the value stack, locals, and
     /// scope table - while preserving globals and native side-tables. The
-    /// REPL calls this after a runtime error so the next input starts from a
+    /// host calls this after a runtime error so the next run starts from a
     /// clean stack instead of reusing a torn-down one.
     pub fn reset_transient(&mut self) {
         self.stack.clear();
         self.locals.clear();
         self.scope_starts.clear();
-        self.current_chunk = std::ptr::null();
+        self.current_chunk = core::ptr::null();
         self.current_ip = 0;
     }
 
     /// Attaches a [`LineIndex`] so runtime errors can still report a
     /// precise `file:line:col` location when no source text is available
-    /// (see the `line_index` field docs). No-op when `source` is also set -
-    /// [`Error::report_to_stderr`] always prefers the full ariadne snippet.
+    /// (see the `line_index` field docs). No-op when `source` is also set.
     pub fn with_line_index(mut self, index: LineIndex) -> Self {
         self.line_index = Some(index);
+        self
+    }
+
+    /// Seeds the PRNG backing `std::random` with host-supplied entropy.
+    /// The default is a fixed constant (no clock/entropy source on bare
+    /// metal), so hosts that want per-boot randomized behavior should call
+    /// this with a value from their own hardware RNG / ADC jitter.
+    pub fn with_seed(mut self, seed: u64) -> Self {
+        self.rng = rl_std_core::Xoshiro256::with_seed(seed);
         self
     }
 
@@ -302,9 +268,9 @@ impl Vm {
     /// Calls an arbitrary callable `VmValue` (a user function, closure, or
     /// native function) with the given arguments and returns its result.
     ///
-    /// Used by native stdlib modules (e.g. `std::gui`) that need to invoke
-    /// an rl-lang callback value from Rust - outside the normal `Call`
-    /// opcode dispatch path, e.g. from an egui event callback. Dispatches
+    /// Used by native stdlib modules that need to invoke
+    /// an RL callback value from Rust - outside the normal `Call`
+    /// opcode dispatch path, e.g. from a host event callback. Dispatches
     /// directly on the callee instead of building a synthetic chunk:
     /// native functions are invoked synchronously, and user functions /
     /// closures get their own call frame executed to completion via the
@@ -1160,9 +1126,9 @@ impl Vm {
     }
 
     /// Runs `value as <type>` for the given numeric target `code`
-    /// (see `CastTarget` in `compiler.rs`). Mirrors `rl-interpreter`'s
-    /// cast evaluation (`evaluator.rs`): sources are widened to `i128`/`f64`,
-    /// then narrowed via checked `try_from` into the target type.
+    /// (see `CastTarget` in `compiler.rs`): sources are widened to
+    /// `i128`/`f64`, then narrowed via checked `try_from` into the target
+    /// type.
     fn cast(&self, value: VmValue, code: usize) -> Result<VmValue, VmError> {
         fn as_i128(v: &VmValue) -> Option<i128> {
             match v {
@@ -1254,7 +1220,7 @@ impl Vm {
         let new_len = self.stack.len() - 1;
         unsafe {
             self.stack.set_len(new_len);
-            std::ptr::read(self.stack.as_ptr().add(new_len))
+            core::ptr::read(self.stack.as_ptr().add(new_len))
         }
     }
     #[inline(always)]
@@ -1302,11 +1268,11 @@ impl Vm {
     }
 
     /// Helper function for comparsion operations
-    /// accepts every numeric VmValue variant (mirrors rl-interpreter's
-    /// `cmp_op!` macro: ints [Int, UInt, SInt, SUInt, BByte, BSByte,
+    /// accepts every numeric VmValue variant (mirrors the `cmp_op!` macro:
+    /// ints [Int, UInt, SInt, SUInt, BByte, BSByte,
     /// Byte, SByte], floats [Float, SFloat])
     /// handles >, <, >=, <=
-    fn binary_cmp(&mut self, pred: fn(std::cmp::Ordering) -> bool) -> Result<(), VmError> {
+    fn binary_cmp(&mut self, pred: fn(core::cmp::Ordering) -> bool) -> Result<(), VmError> {
         let (a, b) = self.pop_two_unchecked();
         let ord = match (&a, &b) {
             (VmValue::Int(a), VmValue::Int(b)) => a.partial_cmp(b),

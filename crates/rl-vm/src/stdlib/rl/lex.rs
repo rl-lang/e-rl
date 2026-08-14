@@ -1,3 +1,5 @@
+use alloc::string::ToString;
+use alloc::vec::Vec;
 use crate::{
     stdlib::common::{extract_string, verr, vok, vs},
     stdlib::macros::vi,
@@ -6,7 +8,7 @@ use crate::{
 };
 use rl_lexer::tokenizer::Tokenizer;
 use rl_utils::source::SourceFile;
-use std::rc::Rc;
+use alloc::rc::Rc;
 
 pub fn func(_: &mut Vm, value: VmValue) -> VmValue {
     let code = match extract_string(value, "lex") {

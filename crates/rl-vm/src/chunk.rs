@@ -1,3 +1,4 @@
+use alloc::vec::Vec;
 use rl_utils::span::Span;
 
 use crate::VmValue;
@@ -120,7 +121,7 @@ impl OpCode {
             byte <= OpCode::RegisterUserMethod as u8,
             "corrupt bytecode: opcode {byte}"
         );
-        unsafe { std::mem::transmute::<u8, OpCode>(byte) }
+        unsafe { core::mem::transmute::<u8, OpCode>(byte) }
     }
 
     // checked variant of the unsafe function above
@@ -187,8 +188,7 @@ pub struct Chunk {
     pub constants: Vec<VmValue>,
     /// source [`Span`] of the statement/expression that produced each byte
     /// in `code`, so runtime errors can point back at exact source ranges
-    /// (fed into `rl_utils::errors::Error` / ariadne, same as the
-    /// interpreter and checker).
+    /// (fed into `rl_utils::errors::Error`).
     pub spans: Vec<Span>,
 }
 
