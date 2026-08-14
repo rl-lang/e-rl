@@ -13,9 +13,9 @@
 RL is the **RL embedded scripting engine**: a hard fork of the rl-lang toolchain, rebuilt as a
 `#![no_std]`-only language runtime that runs on bare metal and custom kernels.
 
-> **Note:** this project is an independent fork. It is not affiliated with, endorsed by, or
-> maintained by the rl-lang project or its maintainers, and the RL language maintained here is
-> not the same project as upstream rl-lang. This repository has its own maintainer.
+> **Note:** this project lives in the same org as rl-lang, but it is a separate fork with its own
+> maintainer. It is not maintained by the rl-lang project's lead maintainer, and the RL language
+> maintained here is not the same project as upstream rl-lang.
 
 It keeps the RL language and its bytecode VM, and drops everything that assumes a hosted OS -
 the CLI, TUI REPL, type checker, language server, tree-walking interpreter, and every OS-facing
