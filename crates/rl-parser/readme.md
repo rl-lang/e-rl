@@ -1,13 +1,13 @@
 # rl-parser
 
-> Parser for the rl-lang programming language
+> Parser for the embedded RL language
 
-Part of the [rl-lang](https://github.com/rl-lang/rl-lang) workspace.
+Part of the **RL embedded scripting engine** - the `#![no_std]`-only hard fork of the rl-lang toolchain built around the bytecode VM.
 
 ## Pipeline position
 
 ```text
-source -> Lexer -> [Token] -> Parser -> [Statement] -> Checker -> Evaluator
+source -> Lexer -> [Token] -> Parser -> [Statement] -> Resolver -> VM Compiler
 ```
 
 `rl-parser` transforms the flat `Vec<Token>` produced by `rl-lexer` into a `Vec<Statement>` - the abstract syntax tree defined by `rl-ast`.

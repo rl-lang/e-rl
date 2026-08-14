@@ -4,14 +4,10 @@ version.workspace = true
 readme = "readme.md"
 edition.workspace = true
 license.workspace = true
-description = "Parser for the rl-lang programming language"
-repository.workspace = true
+description = "Parser for the embedded RL programming language"
 
 [dependencies]
 rl-ast.workspace = true
 rl-lexer.workspace = true
 rl-utils.workspace = true
-log = { workspace = true, optional = true }
-
-[features]
-debug = ["dep:log"]
+hashbrown.workspace = true

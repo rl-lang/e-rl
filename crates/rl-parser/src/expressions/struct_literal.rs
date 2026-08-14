@@ -4,6 +4,8 @@
 //! identifier is recognized as a previously-declared record name and is
 //! immediately followed by `{`.
 
+use alloc::vec::Vec;
+use alloc::string::String;
 use crate::parser_logic::Parser;
 use rl_ast::{ExprId, nodes::ExpressionKind};
 use rl_lexer::tokentypes::TokenType;

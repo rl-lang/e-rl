@@ -3,7 +3,9 @@
 //! Every other parser sub-module is an `impl Parser` block that depends on
 //! the methods defined here. Nothing in this file produces AST nodes directly;
 //! it only provides the machinery for navigating the token stream.
-use std::collections::HashSet;
+use alloc::vec::Vec;
+use alloc::string::String;
+use hashbrown::HashSet;
 
 use rl_ast::{Ast, statements::Statement};
 use rl_lexer::tokentypes::{Token, TokenType};
@@ -35,10 +37,10 @@ pub struct Parser {
     pub ast_arena: Ast,
     /// Names of `record` types declared so far, used to disambiguate
     /// `Name { ... }` struct literals from block bodies (e.g. `if x { }`).
-    pub record_names: std::collections::HashSet<String>,
+    pub record_names: hashbrown::HashSet<String>,
     /// Names of `tag` (enum) types declared so far, used to recognize
     /// `Name.Variant` as an enum variant reference rather than a field access.
-    pub tag_names: std::collections::HashSet<String>,
+    pub tag_names: hashbrown::HashSet<String>,
 }
 
 impl Parser {
@@ -64,8 +66,6 @@ impl Parser {
             tag_names: HashSet::new(),
         };
 
-        #[cfg(feature = "debug")]
-        log::info!("parser initialized");
         let mut statements = Vec::new();
 
         while !parser.is_at_end() {
@@ -86,8 +86,6 @@ impl Parser {
             statements.push(parser.parse_statement_to_ast()?);
         }
 
-        #[cfg(feature = "debug")]
-        log::info!("parsing complete");
         Ok((parser.ast_arena, statements))
     }
 

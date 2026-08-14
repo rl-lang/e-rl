@@ -12,6 +12,7 @@
 //! mathematical normalization and consistency checking are performed later by
 //! the type checker, then the annotation is discarded before execution.
 
+use alloc::boxed::Box;
 use rl_ast::statements::{TypeAnnotation, UnitAnnotation};
 use rl_lexer::tokentypes::TokenType;
 use rl_utils::errors::Error;

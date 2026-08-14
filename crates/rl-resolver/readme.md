@@ -1,8 +1,8 @@
 # rl-resolver
 
-> Name and import resolution for the rl-lang programming language
+> Name and import resolution for the embedded RL language
 
-Part of the [rl-lang](https://github.com/rl-lang/rl-lang) workspace. Runs between parsing and evaluation.
+Part of the **RL embedded scripting engine** - the `#![no_std]`-only hard fork of the rl-lang toolchain built around the bytecode VM. Runs between parsing and compilation.
 
 ## Overview
 
@@ -11,7 +11,7 @@ The resolver walks the AST produced by `rl-parser` and rewrites unresolved name 
 - `depth` - how many scopes up from the current scope the variable lives
 - `slot` - the index of the variable within that scope's slot array
 
-Unresolved `Identifier` nodes become `ResolvedIdentifier { depth, slot }`, and unresolved `Assign` nodes become `ResolvedAssign { depth, slot, value }`. Function and lambda bodies are resolved in their own pushed scope. Import statements are read from disk, lexed, parsed, and resolved inline as part of this pass.
+Unresolved `Identifier` nodes become `ResolvedIdentifier { depth, slot }`, and unresolved `Assign` nodes become `ResolvedAssign { depth, slot, value }`. Function and lambda bodies are resolved in their own pushed scope. Stdlib imports (`get x from std::...`) are resolved at compile time; file imports are rejected by the parser before they reach this pass.
 
 ## Modules
 

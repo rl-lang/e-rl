@@ -1,96 +1,50 @@
 //! Import statement parser (`get`).
 //!
-//! Handles all four import forms in rl-lang:
+//! Handles the stdlib import forms in RL:
 //!
 //! ```text
-//! // 1. single file module
-//! get mymodule
-//!
-//! // 2. file module with path
-//! get mymodule::utils
-//!
-//! // 3. stdlib function
+//! // stdlib function
 //! get std::math::sin
 //!
-//! // 4. named imports from a module or stdlib
+//! // named imports from a stdlib module
 //! get sin, cos from std::math
-//! get add, sub from mymodule::utils
 //! ```
 //!
-//! The first token after `get` and whether `::` or `from` follows determines
-//! which [`StatementKind`] variant is produced:
+//! The embedded build has no filesystem, so file imports (`get mymodule`,
+//! `get add, sub from mymodule::utils`) are rejected at parse time with a
+//! clear error. The first token after `get` and whether `::` or `from`
+//! follows determines which [`StatementKind`] variant is produced:
 //!
 //! | syntax | kind |
 //! |---|---|
-//! | `get mod` | [`StatementKind::ImportFile`] |
-//! | `get mod::sub` | [`StatementKind::ImportFile`] |
 //! | `get std::ns::fn` | [`StatementKind::Import`] |
 //! | `get fn, fn from std::ns` | [`StatementKind::Import`] |
-//! | `get fn, fn from mod::sub` | [`StatementKind::ImportFileNamed`] |
+
+use alloc::vec::Vec;
+use alloc::string::ToString;
 
 use crate::parser_logic::Parser;
 use rl_ast::statements::{Statement, StatementKind};
-use rl_lexer::{tokenizer::Tokenizer, tokentypes::TokenType};
-use rl_utils::{errors::Error, source::SourceFile, span::Span};
+use rl_lexer::tokentypes::TokenType;
+use rl_utils::{errors::Error, span::Span};
 
 impl Parser {
-    fn get_imported_type_names(&mut self, path: &[String], only: Option<&[String]>) {
-        let import_name = format!("{}.rl", path.join("/"));
-        let file_path = std::path::Path::new(self.source_file.name.as_ref())
-            .parent()
-            .unwrap_or_else(|| std::path::Path::new(""))
-            .join(&import_name);
-
-        let Ok(source_text) = std::fs::read_to_string(&file_path) else {
-            return;
-        };
-        let source_file = SourceFile::new(
-            file_path.to_string_lossy().as_ref().to_string(),
-            source_text,
-        );
-        let Ok(tokens) = Tokenizer::lex(source_file.clone()) else {
-            return;
-        };
-        let Ok((_, stmts)) = Parser::parse(tokens, source_file) else {
-            return;
-        };
-
-        for stmt in &stmts {
-            let (name, set): (&String, &mut std::collections::HashSet<String>) = match &stmt.kind {
-                StatementKind::RecordDeclaration { name, .. } => (name, &mut self.record_names),
-                StatementKind::TagDeclaration { name, .. } => (name, &mut self.tag_names),
-                _ => continue,
-            };
-            let wanted = match only {
-                Some(names) => names.contains(name),
-                None => true,
-            };
-            if wanted {
-                set.insert(name.clone());
-            }
-        }
-    }
-
     /// Parses a `get` import statement.
     ///
     /// Called after `get` has been consumed. Dispatches on the tokens that
     /// follow the first identifier:
     ///
-    /// - **`get mod`** (no `::`, no `from`) - single-segment file import.
-    ///   Produces [`StatementKind::ImportFile`]`{ path: [mod] }`.
+    /// - **`get std::ns::fn`** - multi-segment stdlib path. The last segment is
+    ///   treated as the function name and the rest as the namespace path ->
+    ///   [`StatementKind::Import`].
     ///
-    /// - **`get mod::sub::…`** - multi-segment path. If the first segment is
-    ///   `std`, the last segment is treated as the function name and the rest
-    ///   as the namespace path -> [`StatementKind::Import`]. Otherwise the whole
-    ///   path is a file module -> [`StatementKind::ImportFile`].
-    ///
-    /// - **`get name, name from path`** - named imports. If `path` starts with
-    ///   `std` -> [`StatementKind::Import`]`{ names, path }`. Otherwise ->
-    ///   [`StatementKind::ImportFileNamed`]`{ path, names }`.
+    /// - **`get name, name from std::ns`** - named stdlib imports ->
+    ///   [`StatementKind::Import`]`{ names, path }`.
     ///
     /// # Errors
     /// Returns an error if an identifier is missing after `get`, `::`, `,`, or
-    /// `from`, or if `from` itself is absent in the named-import form.
+    /// `from`, if `from` itself is absent in the named-import form, or if the
+    /// import references a source file (unsupported on the embedded build).
     pub fn parse_import(&mut self, start: Span) -> Result<Statement, Error> {
         let first = match self.peek() {
             TokenType::Identifier(name) => name,
@@ -98,7 +52,7 @@ impl Parser {
         };
         self.advance();
 
-        // multi-segment path: get mod::sub  OR  get std::math::sin
+        // multi-segment path: get std::math::sin
         if self.match_type(&[TokenType::ColonColon]) {
             let mut segments = vec![first];
             loop {
@@ -128,20 +82,20 @@ impl Parser {
                     span,
                 ))
             } else {
-                self.get_imported_type_names(&segments, None);
-                Ok(Statement::new(
-                    StatementKind::ImportFile { path: segments },
+                Err(self.err(
+                    "file imports are not supported in the embedded build",
                     span,
                 ))
             };
         }
 
-        // single-segment file import: get mymodule
+        // single-segment file import: get mymodule (unsupported on the embedded build)
         if !matches!(self.peek(), TokenType::Comma | TokenType::From) {
             let span = start.join(self.previous_span());
-            let path = vec![first];
-            self.get_imported_type_names(&path, None);
-            return Ok(Statement::new(StatementKind::ImportFile { path }, span));
+            return Err(self.err(
+                "file imports are not supported in the embedded build",
+                span,
+            ));
         }
 
         // named imports: get add, sub from …
@@ -194,9 +148,8 @@ impl Parser {
         if is_std {
             Ok(Statement::new(StatementKind::Import { names, path }, span))
         } else {
-            self.get_imported_type_names(&path, Some(&names));
-            Ok(Statement::new(
-                StatementKind::ImportFileNamed { path, names },
+            Err(self.err(
+                "file imports are not supported in the embedded build",
                 span,
             ))
         }

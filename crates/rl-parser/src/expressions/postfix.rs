@@ -1,3 +1,5 @@
+use alloc::vec::Vec;
+use alloc::string::String;
 use crate::parser_logic::Parser;
 use rl_ast::{ExprId, nodes::ExpressionKind};
 use rl_lexer::tokentypes::TokenType;
@@ -33,13 +35,6 @@ impl Parser {
                 // not a method call.
                 if self.peek() != TokenType::ColonColon && self.peek() != TokenType::LeftParen {
                     let span = start.join(self.previous_span());
-                    #[cfg(feature = "debug")]
-                    log::trace!(
-                        "alloc FieldAccess expr: target={:?} field={:?} @ {:?}",
-                        expr,
-                        first,
-                        span
-                    );
                     expr = self.ast_arena.alloc_expr(
                         ExpressionKind::FieldAccess {
                             target: expr,
@@ -55,14 +50,6 @@ impl Parser {
                         let assign_span = start.join(value_id.span);
                         let expr_kind = self.ast_arena.exprs.get(expr).kind.clone();
                         if let ExpressionKind::FieldAccess { target, field } = expr_kind {
-                            #[cfg(feature = "debug")]
-                            log::trace!(
-                                "alloc FieldAssign expr: target={:?} field={:?} value={:?} @ {:?}",
-                                target,
-                                field,
-                                value,
-                                assign_span
-                            );
                             return Ok(self.ast_arena.alloc_expr(
                                 ExpressionKind::FieldAssign {
                                     target,
@@ -110,14 +97,6 @@ impl Parser {
                 }
                 let span = start.join(self.previous_span());
 
-                #[cfg(feature = "debug")]
-                log::trace!(
-                    "alloc MethodCall expr: caller={:?} method={:?} args={} @ {:?}",
-                    expr,
-                    method,
-                    args.len(),
-                    span
-                );
 
                 expr = self.ast_arena.alloc_expr(
                     ExpressionKind::MethodCall {
@@ -136,13 +115,6 @@ impl Parser {
                     .map_err(|_| self.err("expected type after `as`", span))?;
                 let span = start.join(self.previous_span());
 
-                #[cfg(feature = "debug")]
-                log::trace!(
-                    "alloc Cast expr: value={:?} target_type={:?} @ {:?}",
-                    expr,
-                    target_type,
-                    span
-                );
 
                 expr = self.ast_arena.alloc_expr(
                     ExpressionKind::Cast {
@@ -156,8 +128,6 @@ impl Parser {
             else if self.match_type(&[TokenType::Question]) {
                 let span = start.join(self.previous_span());
 
-                #[cfg(feature = "debug")]
-                log::trace!("alloc Propagate expr: inner={:?} @ {:?}", expr, span);
 
                 expr = self
                     .ast_arena

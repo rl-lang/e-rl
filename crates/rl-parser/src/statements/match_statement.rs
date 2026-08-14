@@ -1,5 +1,6 @@
 //! match statement parser.
 
+use alloc::vec::Vec;
 use crate::parser_logic::Parser;
 use rl_ast::statements::{MatchPattern, Statement, StatementKind};
 use rl_lexer::tokentypes::TokenType;

@@ -13,6 +13,7 @@
 //! usable in a function parameter (including other record names) may be
 //! used as a field type. A trailing comma after the last field is allowed.
 
+use alloc::vec::Vec;
 use crate::parser_logic::Parser;
 use rl_ast::statements::{Statement, StatementKind};
 use rl_lexer::tokentypes::TokenType;

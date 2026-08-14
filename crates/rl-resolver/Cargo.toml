@@ -4,11 +4,7 @@ version.workspace = true
 readme = "readme.md"
 edition.workspace = true
 license.workspace = true
-description = "Name and import resolution for the rl-lang programming language"
-repository.workspace = true
+description = "Name and import resolution for the embedded RL language"
 
 [dependencies]
 rl-ast.workspace = true
-rl-parser.workspace = true
-rl-lexer.workspace = true
-rl-utils.workspace = true

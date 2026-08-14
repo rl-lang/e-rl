@@ -1,7 +1,8 @@
 mod parse_type;
 mod parse_unit;
 
-use std::rc::Rc;
+use alloc::boxed::Box;
+use alloc::rc::Rc;
 
 use crate::parser_logic::Parser;
 use rl_ast::statements::TypeAnnotation;
@@ -30,10 +31,6 @@ impl Parser {
     /// Returns `true` when the read head sits on [`TokenType::Eof`], indicating
     /// the end of the token stream.
     pub fn is_at_end(&self) -> bool {
-        #[cfg(feature = "debug")]
-        if matches!(self.peek(), TokenType::Eof) {
-            log::debug!("countered token [TokenType::Eof] indicating end of tokens for the file");
-        }
         matches!(self.peek(), TokenType::Eof)
     }
 
@@ -41,18 +38,11 @@ impl Parser {
     pub fn advance(&mut self) {
         if !self.is_at_end() {
             self.current += 1;
-            #[cfg(feature = "debug")]
-            log::debug!("advancing the parser current token: {}", self.current);
         }
     }
 
     /// Returns the [`TokenType`] at the current read head without consuming it.
     pub fn peek(&self) -> TokenType {
-        #[cfg(feature = "debug")]
-        log::debug!(
-            "returning current token: [{:?}]",
-            self.tokens[self.current].token
-        );
         self.tokens[self.current].token.clone()
     }
 
@@ -71,11 +61,6 @@ impl Parser {
     /// # Panics
     /// Panics if called before any token has been consumed (`current == 0`).
     pub fn previous(&self) -> TokenType {
-        #[cfg(feature = "debug")]
-        log::debug!(
-            "returning previous token: [{:?}]",
-            self.tokens[self.current - 1].token
-        );
         self.tokens[self.current - 1].token.clone()
     }
 
@@ -109,14 +94,10 @@ impl Parser {
     pub fn match_type(&mut self, types: &[TokenType]) -> bool {
         for token_type in types {
             if self.check(token_type) {
-                #[cfg(feature = "debug")]
-                log::debug!("Token {:?} matched one in [{:?}]", self.peek(), types);
                 self.advance();
                 return true;
             }
         }
-        #[cfg(feature = "debug")]
-        log::debug!("Token {:?} did not match any in [{:?}]", self.peek(), types);
         false
     }
 

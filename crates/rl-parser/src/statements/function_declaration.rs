@@ -12,6 +12,7 @@
 //! [`TypeAnnotation::Null`]. The `is_entry` flag is set when the function is
 //! preceded by a `!#[entry]` attribute, marking it as the program entry point.
 
+use alloc::vec::Vec;
 use crate::parser_logic::Parser;
 use rl_ast::statements::{FunctionAttribute, Param, Statement, StatementKind, TypeAnnotation};
 use rl_lexer::tokentypes::TokenType;

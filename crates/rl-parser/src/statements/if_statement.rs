@@ -18,6 +18,7 @@
 //! }
 //! ```
 
+use alloc::boxed::Box;
 use crate::parser_logic::Parser;
 use rl_ast::statements::{Statement, StatementKind};
 use rl_lexer::tokentypes::TokenType;

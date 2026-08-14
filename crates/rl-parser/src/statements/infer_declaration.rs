@@ -28,8 +28,6 @@ impl Parser {
     /// Returns an error if the name, `=`, or initialiser expression is
     /// missing or malformed.
     pub fn parse_infer_declaration(&mut self, start: Span) -> Result<Statement, Error> {
-        #[cfg(feature = "debug")]
-        log::debug!("parsing inferred `dec` declaration");
 
         while self.match_type(&[TokenType::Newline]) {}
         let name = match self.peek() {

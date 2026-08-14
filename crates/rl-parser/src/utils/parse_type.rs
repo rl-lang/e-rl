@@ -1,4 +1,5 @@
-use std::rc::Rc;
+use alloc::boxed::Box;
+use alloc::rc::Rc;
 
 use crate::parser_logic::Parser;
 use rl_ast::statements::TypeAnnotation;

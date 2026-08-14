@@ -1,6 +1,6 @@
 //! `for` loop parser - three distinct syntaxes.
 //!
-//! rl-lang supports three `for` forms:
+//! RL supports three `for` forms:
 //!
 //! ```text
 //! // 1. C-style: initializer, condition, increment inside brackets
@@ -18,6 +18,8 @@
 //! - `identifier` -> range or foreach ([`StatementKind::ForRange`] / [`StatementKind::ForEach`])
 //! - anything else -> error
 
+use alloc::boxed::Box;
+use alloc::vec::Vec;
 use crate::parser_logic::Parser;
 use rl_ast::{
     nodes::ExpressionKind,

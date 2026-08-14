@@ -3,7 +3,7 @@
 //!
 //! # Pipeline position
 //! ```text
-//! source -> Lexer -> [Token] -> Parser -> [Statement] -> Checker -> Evaluator
+//! source -> Lexer -> [Token] -> Parser -> [Statement] -> Compiler -> VM
 //! ```
 //!
 //! # Module layout
@@ -11,6 +11,10 @@
 //! - `expressions` - precedence-climbing expression parser
 //! - `statements` - one sub-module per statement kind
 //! - `utils` - shared helpers (type annotation parsing)
+#![no_std]
+
+#[macro_use]
+extern crate alloc;
 
 mod expressions;
 pub mod parser_logic;

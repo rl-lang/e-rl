@@ -11,7 +11,9 @@
 //! CONST int X, string Y = (1, "hi")
 //! ```
 
-use std::rc::Rc;
+use alloc::boxed::Box;
+use alloc::vec::Vec;
+use alloc::rc::Rc;
 
 use crate::parser_logic::Parser;
 use rl_ast::statements::{Statement, StatementKind, TypeAnnotation};
@@ -39,10 +41,6 @@ impl Parser {
     ///
     /// [`parse_type`]: Parser::parse_type
     pub fn parse_const_declartion(&mut self, start: Span) -> Result<Statement, Error> {
-        #[cfg(feature = "debug")]
-        log::debug!("{:?}", self.peek());
-        #[cfg(feature = "debug")]
-        log::debug!("parsing type");
 
         // -- tuple: CONST (T, T, ...) NAME = (...) --
         if self.peek() == TokenType::LeftParen {

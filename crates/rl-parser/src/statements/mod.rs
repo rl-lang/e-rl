@@ -22,6 +22,7 @@ mod tag_declaration;
 mod variable_declaration;
 mod while_statement;
 
+use alloc::vec::Vec;
 use crate::parser_logic::Parser;
 use rl_ast::{
     nodes::ExpressionKind,
@@ -65,8 +66,6 @@ impl Parser {
         match self.peek() {
             TokenType::Newline => {
                 self.advance();
-                #[cfg(feature = "debug")]
-                log::info!("found newline while parsing... skipping");
                 let span = self.previous_span();
                 Ok(Statement::new(
                     StatementKind::Expression(
@@ -78,8 +77,6 @@ impl Parser {
 
             TokenType::Get => {
                 self.advance();
-                #[cfg(feature = "debug")]
-                log::info!("found `get` for import while parsing");
                 self.parse_import(start)
             }
             TokenType::Dec => {
@@ -92,50 +89,34 @@ impl Parser {
                 };
 
                 if is_inferred {
-                    #[cfg(feature = "debug")]
-                    log::info!("found `dec` for inferred variable while parsing");
                     self.parse_infer_declaration(start)
                 } else {
-                    #[cfg(feature = "debug")]
-                    log::info!("found `dec` for variable (record|tag) while parsing");
                     self.parse_variable_declartion(start)
                 }
             }
             TokenType::Const => {
                 self.advance();
-                #[cfg(feature = "debug")]
-                log::info!("found `declaration` for constant while parsing");
                 self.parse_const_declartion(start)
             }
             TokenType::While => {
                 self.advance();
-                #[cfg(feature = "debug")]
-                log::info!("found `while` while parsing");
                 self.parse_while(start)
             }
             TokenType::Loop => {
                 self.advance();
-                #[cfg(feature = "debug")]
-                log::info!("found `loop` while parsing");
                 self.parse_loop(start)
             }
             TokenType::For => {
                 self.advance();
-                #[cfg(feature = "debug")]
-                log::info!("found `for` while parsing");
                 self.parse_for(start)
             }
             TokenType::If => {
                 self.advance();
-                #[cfg(feature = "debug")]
-                log::info!("found `if` while parsing");
                 self.parse_if(start)
             }
 
             TokenType::Fn => {
                 self.advance();
-                #[cfg(feature = "debug")]
-                log::info!("found 'fn' while parsing");
                 self.parse_function(start, None)
             }
 
@@ -177,28 +158,20 @@ impl Parser {
 
             TokenType::Record => {
                 self.advance();
-                #[cfg(feature = "debug")]
-                log::info!("found `record` while parsing");
                 self.parse_record_declaration(start)
             }
 
             TokenType::Tag => {
                 self.advance();
-                #[cfg(feature = "debug")]
-                log::info!("found `tag` while parsing");
                 self.parse_tag_declaration(start)
             }
 
             TokenType::Impl => {
                 self.advance();
-                #[cfg(feature = "debug")]
-                log::info!("found `impl` while parsing");
                 self.parse_impl_block(start)
             }
 
             _ => {
-                #[cfg(feature = "debug")]
-                log::info!("parsing the current tokens as expression");
                 let expr = self.parse_expression()?;
                 let span = self.ast_arena.exprs.get(expr).span;
                 Ok(Statement::new(StatementKind::Expression(expr), span))
@@ -222,8 +195,6 @@ impl Parser {
         }
         let mut statements = Vec::new();
 
-        #[cfg(feature = "debug")]
-        log::info!("parsing body into statements");
         while !self.match_type(&[TokenType::RightBrace, TokenType::Eof]) {
             if matches!(self.peek(), TokenType::Newline) {
                 self.advance();

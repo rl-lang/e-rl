@@ -13,6 +13,7 @@
 //! interchangeably. Attributes are compile-time only and are discarded before
 //! execution.
 
+use alloc::string::String;
 use rl_ast::statements::ProgramAttribute;
 use rl_lexer::tokentypes::TokenType;
 use rl_utils::errors::Error;

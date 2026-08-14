@@ -1,5 +1,5 @@
 //! Statement resolution - transforms declarations and control flow into
-//! slot-indexed variants and resolves import statements at compile time.
+//! slot-indexed variants and resolves stdlib import statements at compile time.
 //!
 //! Key behaviors:
 //!
@@ -9,29 +9,15 @@
 //!   recursion), then push a new scope for parameters and resolve the body
 //! - `ForEach`/`ForRange`: the loop variable is declared inside its own scope
 //!   so it does not leak into the surrounding scope after the loop ends
-//! - `ImportFile` / `ImportFileNamed`: reads the file from disk, lexes, parses,
-//!   and resolves it inline - the result replaces the import statement with
-//!   `ResolvedImportFile { body }` containing the fully resolved statements.
-//!   `ImportFileNamed` additionally filters to only the requested names before
-//!   resolving (records pull their `ImplBlock` methods along automatically).
-//!   Both silently return the original unresolved statement on any IO/parse
-//!   failure, or if the file is already being resolved further up the import
-//!   chain (an import cycle - `self.importing` guards against this so a
-//!   circular `get` can't blow the stack; reporting it as a real error is
-//!   the checker's job). Parsed files are cached per canonical path in
-//!   `self.import_cache` so a module imported from multiple places is only
-//!   read/lexed/parsed/merged once - each import site still resolves its own
-//!   clone, since slot numbers depend on the importing scope.
 
 use crate::Resolver;
+use alloc::boxed::Box;
+use alloc::vec::Vec;
 use rl_ast::{
-    Ast,
     nodes::ExpressionKind,
     statements::{Statement, StatementKind},
+    Ast,
 };
-use rl_lexer::tokenizer::Tokenizer;
-use rl_parser::parser_logic::Parser;
-use rl_utils::source::SourceFile;
 
 impl Resolver {
     pub fn resolve_program(&mut self, ast: Ast, statements: Vec<Statement>) -> Vec<Statement> {
@@ -44,46 +30,6 @@ impl Resolver {
             .into_iter()
             .map(|statement| self.resolve_statement(statement))
             .collect()
-    }
-
-    /// Resolves `path` (e.g. `["mymodule", "sub"]`) to a `.rl` file relative
-    /// to `self.current_dir`, and returns its canonical path, the directory
-    /// it lives in, and its parsed statements with expression ids already
-    /// remapped into `self.ast_arena`.
-    ///
-    /// The parsed-and-merged statement list is cached per canonical path, so
-    /// importing the same file from several places only reads/lexes/parses/
-    /// merges it once; callers still get their own clone to resolve with
-    /// fresh slots, since slot numbers are specific to the importing scope.
-    ///
-    /// Returns `None` on any IO or parse failure, matching the previous
-    /// behavior of silently falling back to the unresolved import statement.
-    fn load_import_file(
-        &mut self,
-        path: &[String],
-    ) -> Option<(std::path::PathBuf, std::path::PathBuf, Vec<Statement>)> {
-        let import_name = format!("{}.rl", path.join("/"));
-        let file_path = self.current_dir.join(&import_name);
-        let canonical = file_path
-            .canonicalize()
-            .unwrap_or_else(|_| file_path.clone());
-        let imported_dir = file_path
-            .parent()
-            .unwrap_or(std::path::Path::new(""))
-            .to_path_buf();
-
-        if let Some(cached) = self.import_cache.get(&canonical) {
-            return Some((canonical, imported_dir, cached.clone()));
-        }
-
-        let source_text = std::fs::read_to_string(&file_path).ok()?;
-        let source_file = SourceFile::new(file_path.to_string_lossy().as_ref(), source_text);
-        let tokens = Tokenizer::lex(source_file.clone()).ok()?;
-        let (imported_ast, stmts) = Parser::parse(tokens, source_file).ok()?;
-        let stmts = self.ast_arena.merge_statements(imported_ast, stmts);
-
-        self.import_cache.insert(canonical.clone(), stmts.clone());
-        Some((canonical, imported_dir, stmts))
     }
 
     fn resolve_statement(&mut self, stmt: Statement) -> Statement {
@@ -425,60 +371,6 @@ impl Resolver {
             }
             StatementKind::Expression(expr) => {
                 StatementKind::Expression(self.resolve_expression(expr))
-            }
-
-            StatementKind::ImportFile { path } => {
-                let Some((canonical, imported_dir, stmts)) = self.load_import_file(&path) else {
-                    return Statement::new(StatementKind::ImportFile { path }, span);
-                };
-                if !self.importing.insert(canonical.clone()) {
-                    return Statement::new(StatementKind::ImportFile { path }, span);
-                }
-
-                let prev_dir = std::mem::replace(&mut self.current_dir, imported_dir);
-                let resolved = self.resolve_statements(stmts);
-                self.current_dir = prev_dir;
-                self.importing.remove(&canonical);
-
-                StatementKind::ResolvedImportFile {
-                    path,
-                    body: resolved,
-                }
-            }
-
-            StatementKind::ImportFileNamed { path, names } => {
-                let Some((canonical, imported_dir, stmts)) = self.load_import_file(&path) else {
-                    return Statement::new(StatementKind::ImportFileNamed { path, names }, span);
-                };
-                if !self.importing.insert(canonical.clone()) {
-                    return Statement::new(StatementKind::ImportFileNamed { path, names }, span);
-                }
-
-                let stmts: Vec<_> = stmts
-                    .into_iter()
-                    .filter(|s| match &s.kind {
-                        StatementKind::FunctionDeclaration { name, .. }
-                        | StatementKind::VariableDeclaration { name, .. }
-                        | StatementKind::ConstantDeclaration { name, .. } => names.contains(name),
-                        StatementKind::Array { name, .. }
-                        | StatementKind::ConstantArray { name, .. } => names.contains(name),
-                        StatementKind::Map { name, .. }
-                        | StatementKind::ConstantMap { name, .. } => names.contains(name),
-                        StatementKind::Set { name, .. }
-                        | StatementKind::ConstantSet { name, .. } => names.contains(name),
-                        StatementKind::RecordDeclaration { name, .. }
-                        | StatementKind::TagDeclaration { name, .. } => names.contains(name),
-                        StatementKind::ImplBlock { record, .. } => names.contains(record),
-                        _ => false,
-                    })
-                    .collect();
-
-                let prev_dir = std::mem::replace(&mut self.current_dir, imported_dir);
-                let body = self.resolve_statements(stmts);
-                self.current_dir = prev_dir;
-                self.importing.remove(&canonical);
-
-                StatementKind::ResolvedImportFile { path, body }
             }
 
             StatementKind::DestructureDeclaration { bindings, value } => {

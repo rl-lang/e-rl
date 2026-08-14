@@ -20,6 +20,9 @@
 //! Everything else about a method (remaining params, return type, body) is
 //! parsed exactly like a normal [`Parser::parse_function`] declaration.
 
+use alloc::string::ToString;
+use alloc::vec::Vec;
+use alloc::string::String;
 use crate::parser_logic::Parser;
 use rl_ast::statements::{FunctionAttribute, Param, Statement, StatementKind, TypeAnnotation};
 use rl_lexer::tokentypes::TokenType;
